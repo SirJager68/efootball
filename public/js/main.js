@@ -3,7 +3,7 @@
 console.log('=====================');
 console.log('==ELECTRIK FOOTBALL==');
 console.log('====HAL 9001 =========');
-console.log('=====================');
+console.log('======================');
 console.log('Loading main.js...');
 console.log('=====================');
 
@@ -11,7 +11,10 @@ console.log('=====================');
 // **
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const ws = new WebSocket('ws://localhost:8080');
+//const ws = new WebSocket('ws://localhost:8080');
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${protocol}//${window.location.host}`;
+const ws = new WebSocket(wsUrl);
 const gameID = 'abcdef';
 let players = [];
 let gameRunning = false;
