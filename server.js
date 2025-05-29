@@ -494,6 +494,14 @@ wss.on('connection', (ws) => {
                 broadcastPlayerUpdate(player);
                 //console.log(`Updated position: ${playerId}, x=${data.x}, y=${data.y}`);
             }
+        } else if (data.type === 'updateSpeed') {
+            const playerId = data.pid || data.playerID;
+            const player = game.players.find(p => p.pid === playerId);
+            if (player && !game.running) {
+                player.speed = data.speed;
+                broadcastPlayerUpdate(player);
+                //console.log(`Updated position: ${playerId}, x=${data.x}, y=${data.y}`);
+            }
         }
     });
     ws.on('close', () => game.clients.delete(ws));
@@ -1096,11 +1104,13 @@ function broadcastPlayerUpdate(player) {
         y: Number(player.y.toFixed(2)),
         h: Number(player.heading.toFixed(2)),
         hb: player.hb,
+        speed: player.speed,
         // d: Number(player.dialValue.toFixed(2)),
         // s: Number((game.clock.s || 600).toFixed(2)),
         // p: Number(game.play.toFixed(2)),
         // r: game.running
     };
+    console.log('player speed:', player.speed);
     // console.log('===========================');
     // console.log('...broadcastPlayerUpdate...');
     // console.log('.moving individual player...');
@@ -1177,7 +1187,8 @@ function broadcastReset(game, message, firstDownYardLine, down, yardsToGo, qtr,)
             x: Number(p.x.toFixed(2)),
             y: Number(p.y.toFixed(2)),
             h: Number(p.heading.toFixed(2)),
-            hb: p.hb
+            hb: p.hb,
+            s: p.speed
         }))
 
     };

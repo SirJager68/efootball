@@ -554,11 +554,13 @@ document.addEventListener('keydown', (e) => {
         ws.send(JSON.stringify({ type: 'passMode', gameID }));
         console.log('===Event press p - Pass mode toggled');
     } else if (e.code === 'KeyZ') {
-        resetZoom(); Sv
+        resetZoom();
     } else if (e.code === 'KeyT') {
         console.log('Vairables', gameState)
         console.log('Websocket', ws)
     }
+
+
 });
 // ====================================== END GAME SWITCH
 
@@ -605,8 +607,37 @@ function isMouseHoverPlayer(mx, my, p) {
 
 
 // ===================================== Add ZOOM with mouse wheel
+let adjustMode = false;
+document.addEventListener('keydown', e => {
+    if (e.key === 'x' || e.key === 'X') adjustMode = true;
+});
+document.addEventListener('keyup', e => {
+    if (e.key === 'x' || e.key === 'X') adjustMode = false;
+});
 canvas.addEventListener('wheel', (e) => {
-    if (isDraggingPlayer && selectedPlayer) {
+    if (adjustMode && hoveredPlayer) {
+        e.preventDefault();
+
+        // lookup the full player object
+        const fullP = getGamePlayer(hoveredPlayer.pid);
+        if (!fullP) return;
+
+        // tweak this factor to taste
+        const wheelFactor = 0.005;
+        // deltaY > 0 means scrolling down → reduce speed
+        fullP.speed = Math.max(0, fullP.speed - e.deltaY * wheelFactor);
+
+        // send the statUpdate to the server
+        ws.send(JSON.stringify({
+            type: 'updateSpeed',
+            gameID,
+            playerID: fullP.pid,
+            x: fullP.x,
+            y: fullP.y,
+            h: fullP.h,
+            speed: fullP.speed    // new field
+        }));
+    } else if (isDraggingPlayer && selectedPlayer) {
         selectedPlayer.h += e.deltaY * 0.001;
         e.preventDefault(); // Prevent page scrolling while rotating
         ws.send(JSON.stringify({ // send to server to broadcast to all clients
@@ -1123,6 +1154,10 @@ function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
 
     if (!showPlayerInfo) return;
 
+  // 2) Draw the tooltip upright by undoing the player rotation
+  ctx.save();
+  ctx.rotate(-p.h);
+
     // 2) build lines of text using fullP
     const lines = [
         fullP.name,
@@ -1159,6 +1194,8 @@ function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
         const y = boxY + padding + idx * (fontSize + padding);
         ctx.fillText(line, boxX + padding, y);
     });
+
+      ctx.restore();
 }
 
 
