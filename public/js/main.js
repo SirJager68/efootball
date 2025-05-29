@@ -109,13 +109,15 @@ let gameState = {
         x: 0,
         y: 0,
         isMoving: false,
-    }
+    },
+    players: []
 };
 
 let msgDuration = 2500; // Message duration in milliseconds
 let ballColor = 'white';
 let isDraggingBand = false;
 let showReceivers = false;
+let showPlayerInfo = true;
 
 let gameStarted = false;
 const LOAD_TIMEOUT = 1000; // 2 seconds
@@ -344,6 +346,13 @@ ws.onmessage = (msg) => {
             gameState.gameId = data.gameId; // Game ID for this session
             initControlsFor(gameState.mySide);
         }
+        if (data.type === 'initialState') {
+            console.log('*************************');
+            console.log('LOADING INITIAL STATE:');
+            gameState.players = data.players.filter(p => p && p.pid);
+            console.log('Initial state received:', JSON.stringify(data));
+        }
+
         if (data.type === 'playerUpdate') {
             const player = players.find(p => p.pid === data.pid);
             if (player) {
@@ -442,7 +451,7 @@ ws.onmessage = (msg) => {
             ballColor = 'white';
             selectedPlayerR = null;
             scorebug.update(gameState);
-            debugScreen.update(gameState, players); // Update debug screen
+            //debugScreen.update(gameState, players); // Update debug screen
             //if (gameStarted) {
             fieldDirty = true; // Force redraw on reset
             render();
@@ -1093,6 +1102,65 @@ function drawBand(ctx, start, endRaw, opts = {}) {
     }
 }
 
+// ====================================== DRAW PLAYER INFO ON HOVER IF TOGGLEED
+// helper to get match players with gameState.players
+function getGamePlayer(pid) {
+    return gameState.players.find(p => p.pid === pid);
+}
+
+
+function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
+    // If `p` came from a secondary array, pull the full data:
+    const fullP = getGamePlayer(p.pid) || p;
+
+    const px = yardsToPixels(baseWidth);
+    const py = yardsToPixels(baseHeight);
+
+    // 1) highlight box
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = yardsToPixels(0.2);
+    ctx.strokeRect(-px / 2, -py / 2, px, py);
+
+    if (!showPlayerInfo) return;
+
+    // 2) build lines of text using fullP
+    const lines = [
+        fullP.name,
+        `id: ${fullP.pid}`,
+        `Speed: ${fullP.speed.toFixed(1)}`,
+        `Strength:  ${fullP.mass.toFixed(2)}`
+    ];
+
+    // 3) styling…
+    const fontSize = yardsToPixels(0.8);
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    // 4) measure maximum line width
+    const padding = yardsToPixels(0.2);
+    let maxWidth = lines.reduce((w, line) => {
+        const m = ctx.measureText(line).width;
+        return m > w ? m : w;
+    }, 0);
+    const totalHeight = lines.length * fontSize + (lines.length - 1) * padding;
+
+    // 5) background position above player
+    const boxX = -maxWidth / 2 - padding;
+    const boxY = -py / 2 - totalHeight - 2 * padding;
+
+    // 6) draw background
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(boxX, boxY, maxWidth + 2 * padding, totalHeight + 2 * padding);
+
+    // 7) draw lines
+    ctx.fillStyle = 'white';
+    lines.forEach((line, idx) => {
+        const y = boxY + padding + idx * (fontSize + padding);
+        ctx.fillText(line, boxX + padding, y);
+    });
+}
+
 
 // =============== PLayer bases
 function drawRoundedRect(ctx, x, y, width, height, radius) {
@@ -1165,10 +1233,13 @@ function renderGame() {
         //     yardsToPixels(0.5)
         // );
         ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
+        // if (p === hoveredPlayer) {
+        //     ctx.strokeStyle = 'yellow';
+        //     ctx.lineWidth = yardsToPixels(0.2);
+        //     ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
+        // }
         if (p === hoveredPlayer) {
-            ctx.strokeStyle = 'yellow';
-            ctx.lineWidth = yardsToPixels(0.2);
-            ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
+            drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo);
         }
         if (p.pid === selectedPlayerR) {
             ctx.strokeStyle = 'yellow';

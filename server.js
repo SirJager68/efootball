@@ -62,8 +62,8 @@ function generateGameId() {
 const crypto = require('crypto');
 
 function makePlayerToken() {
-  // 8 bytes → 16 hex chars
-  return crypto.randomBytes(8).toString('hex');
+    // 8 bytes → 16 hex chars
+    return crypto.randomBytes(8).toString('hex');
 }
 
 // ======================================= GET THE TEAMS PLAYBOOKS
@@ -162,7 +162,7 @@ const initialGameState = {
     homeScore: 0,
     awayScore: 0,
     gameStart: false,
-    gameSpeed: .8, // Speed multiplier for game speed
+    gameSpeed: .8, // Speed multiplier for game speed (at basespeed)
     ball: {
         x: 0,
         y: 0,
@@ -262,6 +262,10 @@ function generatePlayers(losYardLine, playHome, playAway) {
             }
             // Determine if home team is offense or defense
             const isHomeOffense = game.possession === 'home';
+            const roster = isHomeOffense
+                ? homeTeam.rosterOffense
+                : homeTeam.rosterDefense;
+            const playerData = roster[i];
             const xSign = game.losDirection; // Offense: negative x, Defense: positive x
             const headingBase = game.homeSide; // going right (0), going left (π)
             // Convert relative to absolute coordinates
@@ -269,7 +273,8 @@ function generatePlayers(losYardLine, playHome, playAway) {
             const y = playPosH ? Math.max(8.5, Math.min(71.5, midlineY + playPosH.y * (PLAYABLE_WIDTH / 360))) : 20 + i * 4;
             return {
                 pid: `${game.id}-h-${id}`,
-                name: homeTeam.roster[i],
+                //name: homeTeam.roster[i].name,
+                name: playerData.name,
                 x: x,
                 y: y,
                 heading: headingBase + randomHeadingOffset(),
@@ -279,7 +284,8 @@ function generatePlayers(losYardLine, playHome, playAway) {
                 baseHeight: 2.5,
                 mass: 1 + Math.random() * 0.3,
                 dialValue: Math.random() * 100,
-                speed: 10 + Math.random() * 0.2,
+                //speed: 10 + Math.random() * 0.2,
+                speed: (playerData.speed * .1) + Math.random() * 0.2,
                 hb: id === '06' ? (game.possession === 'home') : (playPosH.hb || false),
                 ie: playPosH.ie || false,
             };
@@ -294,15 +300,19 @@ function generatePlayers(losYardLine, playHome, playAway) {
             }
             // Determine if away team is offense or defense
             const isAwayOffense = game.possession === 'away';
-            //const xSign = isAwayOffense ? -1 : 1; // Offense: negative x, Defense: positive x
+            // choose the right roster array
+            const roster = isAwayOffense
+                ? awayTeam.rosterOffense
+                : awayTeam.rosterDefense;
+            const playerData = roster[i];
             const xSign = game.losDirection; // Offense: negative x, Defense: positive x
             const headingBase = game.awaySide; // Offense: right (0), Defense: left (π)
-            // Convert relative to absolute coordinates
             const x = playPosHA ? Math.max(10, Math.min(130, game.losYardLine + xSign * playPosHA.x)) : 65;
             const y = playPosHA ? Math.max(8.5, Math.min(71.5, midlineY + playPosHA.y * (PLAYABLE_WIDTH / 360))) : 20 + i * 4;
             return {
                 pid: `${game.id}-a-${id}`,
-                name: isAwayOffense ? awayTeam.rosterOffense[i] : awayTeam.rosterDefense[i],
+                //name: isAwayOffense ? awayTeam.rosterOffense[i].name : awayTeam.rosterDefense[i].name,
+                name: playerData.name,
                 x: x,
                 y: y,
                 heading: headingBase + randomHeadingOffset(),
@@ -312,7 +322,8 @@ function generatePlayers(losYardLine, playHome, playAway) {
                 baseHeight: 2.5,
                 mass: 1 + Math.random() * 0.2,
                 dialValue: Math.random() * 100,
-                speed: 10 + Math.random() * 0.2,
+                //speed: 10 + Math.random() * 0.2,
+                speed: (playerData.speed * .1) + Math.random() * 0.2,
                 hb: id === '06' ? (game.possession === 'away') : (playPosHA.hb || false),
                 ie: playPosHA.ie || false,
             };
@@ -369,7 +380,7 @@ wss.on('connection', (ws) => {
     ws.token = token; // Assign token to the WebSocket
     ws.gameId = game.id; // Assign game ID to the WebSocket
 
-    console.log ('side , token, gameid', side, token, game.id);
+    console.log('side , token, gameid', side, token, game.id);
     // Add to our set
     game.clients.add(ws);
     // Tell this socket what side it is
@@ -396,6 +407,7 @@ wss.on('connection', (ws) => {
     //     }
     //});
     const state = {
+        type: 'initialState',
         i: game.id,
         s: Number((game.clock.s || initialGameState.clock.s).toFixed(2)),
         p: Number((game.playclock || initialGameState.playclock).toFixed(1)),
@@ -414,9 +426,10 @@ wss.on('connection', (ws) => {
         awayTD: game.awayTD,
         gameStart: game.gameStart,
         message: message,
+        players: game.players,
     };
     ws.send(JSON.stringify(state));
-    broadcastReset(game, { text: "Game Initianlized", type: "info" });
+    broadcastReset(game, { text: "🏈Game Initialized🏈", type: "info" });
     console.log('=========================================');
     console.log('Sent initial state to new client:', state);
     console.log('=========================================');
@@ -1088,10 +1101,10 @@ function broadcastPlayerUpdate(player) {
         // p: Number(game.play.toFixed(2)),
         // r: game.running
     };
-    console.log('===========================');
-    console.log('...broadcastPlayerUpdate...');
-    console.log('.moving individual player...');
-    console.log('===========================');
+    // console.log('===========================');
+    // console.log('...broadcastPlayerUpdate...');
+    // console.log('.moving individual player...');
+    // console.log('===========================');
     game.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(payload));

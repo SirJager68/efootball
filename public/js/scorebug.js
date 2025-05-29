@@ -48,12 +48,14 @@ class Scorebug {
         this.state = {
             homeTeam: {
                 name: (data.homeTeam?.name?.toUpperCase() || this.state.homeTeam.name).slice(0, 8), // Max 8 chars
-                score: Math.max(0, Number(data.homeTeam?.score) || this.state.homeTeam.score),
+                //score: Math.max(0, Number(data.homeTeam?.score) || this.state.homeTeam.score),
+                score: Math.max(0, Number(gameState.homeTeam.score) || this.state.homeTeam.score),
                 color: data.homeTeam?.color || this.state.homeTeam.color
             },
             awayTeam: {
                 name: (data.awayTeam?.name?.toUpperCase() || this.state.awayTeam.name).slice(0, 8),
-                score: Math.max(0, Number(data.awayTeam?.score) || this.state.awayTeam.score),
+                //score: Math.max(0, Number(data.awayTeam?.score) || this.state.awayTeam.score),
+                score: Math.max(0, Number(gameState.awayTeam.score) || this.state.awayTeam.score),
                 color: data.awayTeam?.color || this.state.awayTeam.color
             },
             quarter: Math.max(1, Number(data.qtr) || this.state.quarter),
@@ -99,7 +101,8 @@ class Scorebug {
         ctx.textBaseline = 'middle';
         ctx.fillText(this.state.homeTeam.name, 10, this.height * 0.3);
         ctx.font = `bold ${fontSizeLarge}px ${this.font}`;
-        ctx.fillText(this.state.homeTeam.score, 10, this.height * 0.7);
+        //ctx.fillText(this.state.homeTeam.score, 10, this.height * 0.7);
+        ctx.fillText(gameState.homeTeam.score, 10, this.height * 0.7);
 
         // Away team
         ctx.fillStyle = this.state.awayTeam.color;
@@ -109,7 +112,8 @@ class Scorebug {
         ctx.textAlign = 'right';
         ctx.fillText(this.state.awayTeam.name, this.width - 10, this.height * 0.3);
         ctx.font = `bold ${fontSizeLarge}px ${this.font}`;
-        ctx.fillText(this.state.awayTeam.score, this.width - 10, this.height * 0.7);
+        //ctx.fillText(this.state.awayTeam.score, this.width - 10, this.height * 0.7);
+        ctx.fillText(gameState.awayTeam.score, this.width - 10, this.height * 0.7);
 
         // Center section (quarter, game clock, play clock)
         ctx.fillStyle = this.bgColor;
