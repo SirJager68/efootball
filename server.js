@@ -26,9 +26,12 @@ app.get('/game.html', (req, res) => res.sendFile(__dirname + '/game.html')); // 
 const server = http.createServer(app);
 
 // Setup WebSocket server
-const wss = process.env.NODE_ENV === 'production'
-    ? new WebSocketServer({ server }) // Heroku: Share port with Express
-    : new WebSocketServer({ port: 8080 }); // Local: WebSocket on 8080
+// const wss = process.env.NODE_ENV === 'production'
+//     ? new WebSocketServer({ server }) // Heroku: Share port with Express
+//     : new WebSocketServer({ port: 8080 }); // Local: WebSocket on 8080
+// new: use the same HTTP server for WS in all cases
+const wss = new WebSocketServer({ server });
+
 
 const PORT = process.env.NODE_ENV === 'production' ? process.env.PORT : 3001;
 server.listen(PORT, () => {
@@ -159,6 +162,7 @@ const initialGameState = {
     homeScore: 0,
     awayScore: 0,
     gameStart: false,
+    gameSpeed: .8, // Speed multiplier for game speed
     ball: {
         x: 0,
         y: 0,
@@ -732,7 +736,7 @@ function getFrontEdgeX(player, playState) {
 function updatePhysics(game) {
     grid.clear();
     game.players.forEach(p => {
-        const baseSpeed = 0.5 * p.speed;
+        const baseSpeed = (0.5 * p.speed) * game.gameSpeed; // Adjust speed based on game speed
         p.heading += (Math.random() - 0.5) * 0.05;      // random heading change to simulate bibration
         p.vx += baseSpeed * Math.cos(p.heading) * 0.15;  // moves players forward .15 seems realistic 100yards in 10 seconds
         p.vy += baseSpeed * Math.sin(p.heading) * 0.15;  // moves players forward
