@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multiplayer Lobby</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { background: #222; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 2rem; }
+    select, button { margin: 0.5rem; padding: 0.5rem; }
+    ul { list-style: none; padding: 0; }
+    li { margin: 0.5rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Game Lobby</h1>
+  <div>
+    <select id="teamSelect">
+      <option value="">-- Select Team --</option>
+      <option value="Eagles">Philadelphia Eagles</option>
+      <option value="Cowboys">Dallas Cowboys</option>
+      <option value="Dolphins">Miami Dolphins</option>
+      <option value="Raiders">Las Vegas Raiders</option>
+      <option value="Seahawks">Seattle Seahawks</option>
+      <option value="Chiefs">Kansas City Chiefs</option>
+      <option value="Packers">Green Bay Packers</option>
+      <option value="Patriots">New England Patriots</option>
+    </select>
+    <button id="createBtn">Create Game</button>
+  </div>
+  <h2>Available Games</h2>
+  <ul id="gamesList"></ul>
+
+  <script>
+    const socket = io();
+    const select = document.getElementById('teamSelect');
+    const createBtn = document.getElementById('createBtn');
+    const gamesList = document.getElementById('gamesList');
+    let myGameId = null;
+
+    createBtn.onclick = () => {
+      const team = select.value;
+      if (!team) return alert('Select a team.');
+      socket.emit('createGame', { team });
+    };
+
+    socket.on('gamesUpdate', games => {
+      gamesList.innerHTML = '';
+      games.forEach(g => {
+        const li = document.createElement('li');
+        li.textContent = `Game ${g.id}: ${g.homeTeam}`;
+        if (!g.awayTeam) {
+          const btn = document.createElement('button');
+          btn.textContent = 'Join';
+          btn.onclick = () => {
+            const team = select.value;
+            if (!team) return alert('Select a team.');
+            socket.emit('joinGame', { gameId: g.id, team });
+          };
+          li.appendChild(btn);
+        } else {
+          li.textContent += ` vs ${g.awayTeam}`;
+        }
+        gamesList.appendChild(li);
+
+        // if this is our game and both players joined, redirect
+        if ((g.id === myGameId || !myGameId) && g.awayTeam && (g.id === myGameId || myGameId === null)) {
+          // set and redirect
+          if (!myGameId) myGameId = g.id;
+          window.location.href = `/game.html?gameId=${g.id}`;
+        }
+      });
+    });
+
+    socket.on('errorMsg', msg => alert(msg));
+
+    socket.on('gameCreated', ({ gameId }) => { myGameId = gameId; });
+    socket.on('gameJoined', ({ gameId }) => { myGameId = gameId; });
+  </script>
+</body>
+</html>
