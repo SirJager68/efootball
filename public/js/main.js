@@ -347,10 +347,37 @@ ws.onmessage = (msg) => {
             initControlsFor(gameState.mySide);
         }
         if (data.type === 'initialState') {
+                console.clear();
             console.log('*************************');
             console.log('LOADING INITIAL STATE:');
             gameState.players = data.players.filter(p => p && p.pid);
             console.log('Initial state received:', JSON.stringify(data));
+            // Clear out any old noise
+        
+
+            // Start a grouped log
+            console.group('%c🔄 Loading Initial State', 'color: #0af; font-weight: bold;');
+
+            // Log summary fields
+            console.log('Game ID:        %s', data.i);
+            console.log('Possession:     %s', data.r);
+            console.log('LOS Yard Line:  %d', data.los);
+            console.log('First Down:     %d', data.fdl);
+            console.log('Quarter:        %d', data.qtr);
+            console.log('Game Clock:     %d', data.s);
+            console.log('Play Clock:     %d', data.p);
+
+            // Show the players in a table (pick columns you care about)
+            console.table(
+                data.players.filter(p => p && p.pid),
+                ['pid', 'name', 'x', 'y', 'speed', 'defaultSpeed', 'strength', 'mass', 'hb', 'ie']
+            );
+
+            // If you still want the raw object, pretty-print it:
+            console.log('Full payload:\n', JSON.stringify(data, null, 2));
+
+            // End the group so you can collapse it
+            console.groupEnd();
         }
 
         if (data.type === 'playerUpdate') {
@@ -404,7 +431,7 @@ ws.onmessage = (msg) => {
             gameState.ball.isMoving = false;
             ballColor = 'white';
             scorebug.update(gameState);
-            debugScreen.update(gameState, players); // Update debug screen
+            //debugScreen.update(gameState, players); // Update debug screen
             if (gameStarted) render();
 
             // ================================================================= RESET EVENT
@@ -413,8 +440,9 @@ ws.onmessage = (msg) => {
             // =============================================================================
         } else if (data.type === 'reset') {
             players = data.pl.filter(p => p && p.pid);
+            console.log('Reset event received:', JSON.stringify(data));
             console.log('Reset event');
-
+            //gameState.players = players;
             const updates = {
                 los: v => (gameState.los = v, console.log(`Updated LOS: losYardLine=${v}`)),
                 fdl: v => (gameState.firstDownLine = v, console.log(`Updated first down: first down=${v}`)),
@@ -1154,16 +1182,20 @@ function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
 
     if (!showPlayerInfo) return;
 
-  // 2) Draw the tooltip upright by undoing the player rotation
-  ctx.save();
-  ctx.rotate(-p.h);
+    // 2) Draw the tooltip upright by undoing the player rotation
+    ctx.save();
+    ctx.rotate(-p.h);
 
-    // 2) build lines of text using fullP
+    //const fullP = getGamePlayer(p.pid) || p;
+    const speedStr = typeof fullP.speed === 'number' ? fullP.speed.toFixed(1) : '0.0';
+    const strStr = typeof fullP.mass === 'number' ? fullP.mass.toFixed(1) : '0.0';
+    //const massStr = typeof fullP.mass === 'number' ? fullP.mass.toFixed(1) : '0.0';
+
     const lines = [
         fullP.name,
-        `id: ${fullP.pid}`,
-        `Speed: ${fullP.speed.toFixed(1)}`,
-        `Strength:  ${fullP.mass.toFixed(2)}`
+        `ID:       ${fullP.pid}`,
+        `Speed:    ${speedStr}`,
+        `Strength: ${strStr}`,
     ];
 
     // 3) styling…
@@ -1195,7 +1227,7 @@ function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
         ctx.fillText(line, boxX + padding, y);
     });
 
-      ctx.restore();
+    ctx.restore();
 }
 
 

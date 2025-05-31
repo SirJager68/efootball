@@ -276,16 +276,17 @@ function generatePlayers(losYardLine, playHome, playAway) {
                 //name: homeTeam.roster[i].name,
                 name: playerData.name,
                 x: x,
-                y: y,
-                heading: headingBase + randomHeadingOffset(),
+                y: parseFloat(y.toFixed(2)),
+                heading: parseFloat((headingBase + randomHeadingOffset()).toFixed(3)),
                 vx: 0,
                 vy: 0,
                 baseWidth: 4.1,
                 baseHeight: 2.5,
-                mass: 1 + Math.random() * 0.3,
-                dialValue: Math.random() * 100,
+                mass: parseFloat((1 + Math.random() * 0.3).toFixed(2)),
+                dialValue: parseFloat((Math.random() * 100).toFixed(2)),
                 //speed: 10 + Math.random() * 0.2,
-                speed: (playerData.speed * .1) + Math.random() * 0.2,
+                speed: parseFloat(((playerData.speed * 0.1) + Math.random() * 0.2).toFixed(2)),
+                defaultSpeed: parseFloat(((playerData.speed * 0.1) + Math.random() * 0.2).toFixed(2)),
                 hb: id === '06' ? (game.possession === 'home') : (playPosH.hb || false),
                 ie: playPosH.ie || false,
             };
@@ -314,16 +315,17 @@ function generatePlayers(losYardLine, playHome, playAway) {
                 //name: isAwayOffense ? awayTeam.rosterOffense[i].name : awayTeam.rosterDefense[i].name,
                 name: playerData.name,
                 x: x,
-                y: y,
-                heading: headingBase + randomHeadingOffset(),
+                y: parseFloat(y.toFixed(2)),
+                heading: parseFloat((headingBase + randomHeadingOffset()).toFixed(3)),
                 vx: 0,
                 vy: 0,
                 baseWidth: 4.1,
                 baseHeight: 2.5,
-                mass: 1 + Math.random() * 0.2,
-                dialValue: Math.random() * 100,
+                mass: parseFloat((1 + Math.random() * 0.3).toFixed(2)),
+                dialValue: parseFloat((Math.random() * 100).toFixed(2)),
                 //speed: 10 + Math.random() * 0.2,
-                speed: (playerData.speed * .1) + Math.random() * 0.2,
+                speed: parseFloat(((playerData.speed * 0.1) + Math.random() * 0.2).toFixed(2)),
+                defaultSpeed: parseFloat(((playerData.speed * 0.1) + Math.random() * 0.2).toFixed(2)),
                 hb: id === '06' ? (game.possession === 'away') : (playPosHA.hb || false),
                 ie: playPosHA.ie || false,
             };
@@ -454,6 +456,9 @@ wss.on('connection', (ws) => {
             const plays = selectPlays(game.possession);
             game.players = generatePlayers(losYardLine, plays.playHome, plays.playAway).map(p => ({ ...p }));
             game.gameRunning = false;
+            game.players.forEach(p => {
+                p.speed = p.defaultSpeed; // Reset speed to default
+            });
             broadcastReset(game, { text: "Play Reset", type: "info" });
         } else if (data.type === 'passMode') {
             game.passMode = true;
@@ -728,6 +733,62 @@ function restartGame() {
     broadcastReset(game, { text: "New Game Started!", type: "info" });
     broadcastClockUpdate(game);
 }
+function restartGamez() {
+  console.log('>>>>>> Game Restart Key - Q');
+
+  // 1) Preserve open sockets
+  const { clients } = game;
+
+  // 2) Reset to your blueprint state, keeping only clients
+  Object.assign(game, {
+    ...initialGameState,
+    id:      generateGameId(),
+    clients,               // carry over WebSocket connections
+  });
+
+  // 3) Zero out scores & clocks
+  game.homeScore       = 0;
+  game.awayScore       = 0;
+  game.clock.s         = clockDuration;
+  //game.playClock.s     = playClockDuration;
+
+  // 4) Reset field markers
+  game.playState            = 'kickoff';
+  game.losYardLine          = initialGameState.losYardLine || 50;
+  game.firstDownYardLine    = game.losYardLine + 10;
+  game.losDirection         = 1;             // or whatever your default is
+  game.homeSide             = 0;             // heading for home
+  game.awaySide             = Math.PI;       // heading for away
+
+  // 5) Pick & generate the brand-new roster
+  const { playHome, playAway } = selectPlays(game.possession);
+  game.players = generatePlayers(
+    game.losYardLine,
+    playHome,
+    playAway
+  ).map(p => ({ ...p }));
+
+  console.log('>>>>>> Game reset to initial state');
+
+  // 6) Broadcast the *entire* new state so clients fully resync
+  // (you can fold in your info/clock messages here too)
+  broadcastAll({
+    type:  'state',
+    state: {
+      players:            game.players,
+      homeScore:          game.homeScore,
+      awayScore:          game.awayScore,
+      clock:              game.clock,
+      playClock:          game.playClock,
+      losYardLine:        game.losYardLine,
+      firstDownYardLine:  game.firstDownYardLine,
+      playState:          game.playState,
+      possession:         game.possession,
+      //…and any other fields client needs…
+    }
+  });
+}
+
 // =================================================== END THE CLOCK
 
 // =================================================== PHYSICS
@@ -1188,7 +1249,7 @@ function broadcastReset(game, message, firstDownYardLine, down, yardsToGo, qtr,)
             y: Number(p.y.toFixed(2)),
             h: Number(p.heading.toFixed(2)),
             hb: p.hb,
-            s: p.speed
+            s: Number(p.speed.toFixed(2))
         }))
 
     };
