@@ -15,6 +15,7 @@ const { WebSocketServer } = require('ws');
 const http = require('http');
 const { SpatialGrid, detectAndResolveCollisionRectangles, getRectangleVertices, tackle } = require('./public/js/physics');
 const plays = require('./public/js/plays.js');
+const path = require('path');
 
 // Create Express app
 const app = express();
@@ -69,37 +70,68 @@ function makePlayerToken() {
 // ======================================= GET THE TEAMS PLAYBOOKS
 // ** offense and def. maybe come from database
 // ===================== GET HOME PLAYBOOK
+let offensePlayTrigger = true; // Flag to trigger offense play selection
+let defensePlayTrigger = true
 let offensivePlaysHome = {};
 let defensivePlaysHome = {};
-try {
-    const playsModuleHome = require('./public/js/playbookHome.js');
-    if (playsModuleHome) {
-        offensivePlaysHome = playsModuleHome.offensivePlays;
-        defensivePlaysHome = playsModuleHome.defensivePlays;
-        console.log('Successfully imported offensivePlays Home Team:', Object.keys(offensivePlaysHome));
-    } else {
-        console.error('plays.js does not export offensivePlays');
-    }
-} catch (error) {
-    console.error('Failed to import plays.js:', error.message);
-    console.error('Ensure plays.js exists at C:\\Users\\jager\\Documents\\CODE\\HAL9001\\electrikfootball\\plays.js');
-}
-// ======================== GET AWAY PLAYBOOK
 let offensivePlaysAway = {};
 let defensivePlaysAway = {};
 try {
-    const playsModuleAway = require('./public/js/playbookAway.js');
-    if (playsModuleAway) {
-        offensivePlaysAway = playsModuleAway.offensivePlays;
-        defensivePlaysAway = playsModuleAway.defensivePlays;
-        console.log('Successfully imported offensivePlays Away Team:', Object.keys(playsModuleAway));
+    const homeTeam = require('./public/js/homeTeam.js');
+    if (homeTeam && homeTeam.playbooks) {
+        offensivePlaysHome = homeTeam.playbooks.offensive;
+        defensivePlaysHome = homeTeam.playbooks.defensive;
+        console.log('---Successfully imported offensivePlays Home Team:', Object.keys(offensivePlaysHome));
     } else {
-        console.error('plays.js does not export offensivePlays');
+        console.error('homeTeam.js does not export playbooks');
     }
 } catch (error) {
-    console.error('Failed to import plays.js:', error.message);
-    console.error('Ensure plays.js exists at C:\\Users\\jager\\Documents\\CODE\\HAL9001\\electrikfootball\\plays.js');
+    console.error('Failed to import homeTeam.js:', error.message);
 }
+//const playsModuleHome = require('./public/js/homeTeam.js');
+// try {
+//     //const playsModuleHome = require('./public/js/homeTeam.js');
+//     if (playsModuleHome) {
+//         offensivePlaysHome = playsModuleHome.offensivePlays;
+//         defensivePlaysHome = playsModuleHome.defensivePlays;
+//         console.log('Successfully imported offensivePlays Home Team:', Object.keys(offensivePlaysHome));
+//     } else {
+//         console.error('plays.js does not export offensivePlays');
+//     }
+// } catch (error) {
+//     console.error('Failed to import plays.js:', error.message);
+//     console.error('Ensure plays.js exists at C:\\Users\\jager\\Documents\\CODE\\HAL9001\\electrikfootball\\plays.js');
+// }
+// ======================== GET AWAY PLAYBOOK
+
+try {
+    const awayTeam = require('./public/js/awayTeam.js');
+    if (awayTeam && awayTeam.playbooks) {
+        offensivePlaysAway = awayTeam.playbooks.offensive;
+        defensivePlaysAway = awayTeam.playbooks.defensive;
+        console.log('---Successfully imported offensivePlays Away Team:', Object.keys(offensivePlaysAway));
+    } else {
+        console.error('awayTeam.js does not export playbooks');
+    }
+} catch (error) {
+    console.error('Failed to import awayTeam.js:', error.message);
+}
+//======================
+// let offensivePlaysAway = {};
+// let defensivePlaysAway = {};
+// try {
+//     const playsModuleAway = require('./public/js/playbookAway.js');
+//     if (playsModuleAway) {
+//         offensivePlaysAway = playsModuleAway.offensivePlays;
+//         defensivePlaysAway = playsModuleAway.defensivePlays;
+//         console.log('Successfully imported offensivePlays Away Team:', Object.keys(playsModuleAway));
+//     } else {
+//         console.error('plays.js does not export offensivePlays');
+//     }
+// } catch (error) {
+//     console.error('Failed to import plays.js:', error.message);
+//     console.error('Ensure plays.js exists at C:\\Users\\jager\\Documents\\CODE\\HAL9001\\electrikfootball\\plays.js');
+// }
 
 
 // Field constants (mirroring main.js)
@@ -119,7 +151,7 @@ let rightEndZone = 120; // Right end zone
 let leftEndZone = 20; // Left end zone
 let isTouchDown = false; // Flag for touchdown detection
 let touchdownDetected = false; // Flag for touchdown detection
-let clockDuration = 60;
+let clockDuration = 20;
 let timeExpired = false; // Flag for time expired
 
 let ballx = 0;
@@ -163,6 +195,10 @@ const initialGameState = {
     awayScore: 0,
     gameStart: false,
     gameSpeed: .8, // Speed multiplier for game speed (at basespeed)
+    playOffense: 'I-Formation', // Default offensive play
+    playDefense: '4-3-Standard', // Default defensive play
+    playOffenseName: 'I-Formation', // Name of the offensive play
+    playDefenseName: '4-3-Standard', // Name of the defensive play
     ball: {
         x: 0,
         y: 0,
@@ -186,15 +222,18 @@ const { time } = require('console');
 const { type } = require('os');
 // =========================================== GET PLAYBOOKS
 // Function to select plays based on possession
-function selectPlays(possession) {
+
+function selectPlays(possession, offensePlay, defensePlay, offensePlayTrigger, defensePlayTrigger) {
+    console.log('selectPlays called with possession:', possession, 'offensePlay:', offensePlay, 'defensePlay:', defensePlay);
     let playHome, playAway;
+    console.log('')
     if (possession === 'home') {
         if (game.playState === 'kickoff') {
             playHome = offensivePlaysHome["Kickoff Return"] || hardcodedFormation;
             playAway = defensivePlaysAway["Kickoff"] || hardcodedFormation;
         } else {
-            playHome = offensivePlaysHome["Red - Shotgun"] || hardcodedFormation;
-            playAway = defensivePlaysAway["4-3-Standard"] || hardcodedFormation;
+                playHome = offensivePlaysHome[offensePlay] || game.playOffenseName;
+                playAway = defensivePlaysAway[defensePlay] || game.playDefenseName;
         }
         console.log(' playbook - home is on the offense');
     } else {
@@ -202,12 +241,15 @@ function selectPlays(possession) {
             playHome = defensivePlaysHome["Kickoff"] || hardcodedFormation;
             playAway = offensivePlaysAway["Kickoff Return"] || hardcodedFormation;
         } else {
-            playHome = defensivePlaysHome["4-3-Standard"] || hardcodedFormation;
-            playAway = offensivePlaysAway["I-Formation"] || hardcodedFormation;
+            playHome = defensivePlaysHome[defensePlay] || game.playDefenseName;
+            playAway = offensivePlaysAway[offensePlay] || game.playOffenseName;
         }
         console.log('plays' + playHome)
     }
-
+    game.playOffense = playHome;
+    game.playDefense = playAway;
+    console.log('game.playOffense', game.playOffense);
+    console.log('game.playDefense', game.playDefense);
     // figure out direction and heading of teams based on possession
     if (game.possession === 'home' && game.homeSide === 0) {
         game.losDirection = 1; // Home team is on the left going right
@@ -252,6 +294,9 @@ function randomHeadingOffset() {
 // ** get players setup from playbook and set them based on losYardLine
 // Initialize players
 function generatePlayers(losYardLine, playHome, playAway) {
+    playHome = game.playOffense || playHome;
+    playAway = game.playDefense || playAway;
+    console.log('generatePlayers called with losYardLine:', losYardLine, 'playHome:', playHome, 'playAway:', playAway);
     return [
         // ===============================================Home team (11 players)
         ...Array.from({ length: 11 }, (_, i) => {
@@ -275,7 +320,7 @@ function generatePlayers(losYardLine, playHome, playAway) {
                 pid: `${game.id}-h-${id}`,
                 //name: homeTeam.roster[i].name,
                 name: playerData.name,
-                x: x,
+                x: parseFloat(x.toFixed(2)),
                 y: parseFloat(y.toFixed(2)),
                 heading: parseFloat((headingBase + randomHeadingOffset()).toFixed(3)),
                 vx: 0,
@@ -314,7 +359,7 @@ function generatePlayers(losYardLine, playHome, playAway) {
                 pid: `${game.id}-a-${id}`,
                 //name: isAwayOffense ? awayTeam.rosterOffense[i].name : awayTeam.rosterDefense[i].name,
                 name: playerData.name,
-                x: x,
+                x: parseFloat(x.toFixed(2)),
                 y: parseFloat(y.toFixed(2)),
                 heading: parseFloat((headingBase + randomHeadingOffset()).toFixed(3)),
                 vx: 0,
@@ -379,14 +424,16 @@ wss.on('connection', (ws) => {
     ws.side = side;
     if (side === 'home') game.home = ws;
     else game.away = ws;
+    if (side === 'home') { game.possession = 'home'; } // Home team starts with possession
     ws.token = token; // Assign token to the WebSocket
     ws.gameId = game.id; // Assign game ID to the WebSocket
+    ws.possession = game.possession; // Assign possession to the WebSocket
 
-    console.log('side , token, gameid', side, token, game.id);
+    console.log('side , token, gameid', side, token, game.id, game.possession);
     // Add to our set
     game.clients.add(ws);
     // Tell this socket what side it is
-    ws.send(JSON.stringify({ type: 'assignedSide', side, token, gameId: game.id }));
+    ws.send(JSON.stringify({ type: 'assignedSide', side, token, gameId: game.id, possession: game.possession }));
     // Notify the other player that someone joined
     for (let client of game.clients) {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
@@ -453,7 +500,11 @@ wss.on('connection', (ws) => {
             }
         } else if (data.type === 'reset') {
             // ====== RESET THE PLAYERS
-            const plays = selectPlays(game.possession);
+            offensePlayTrigger = true; // Reset offense play trigger
+            defensePlayTrigger = true; // Reset defense play trigger    
+            offensePlayName = game.playOffense = 'Wishbone'; // Reset to default offense play
+            defensePlayName = game.playDefense = '4-3-Standard'; // Reset to default defense play
+            const plays = selectPlays(game.possession, offensePlayName, defensePlayName, offensePlayTrigger, defensePlayTrigger);
             game.players = generatePlayers(losYardLine, plays.playHome, plays.playAway).map(p => ({ ...p }));
             game.gameRunning = false;
             game.players.forEach(p => {
@@ -481,7 +532,7 @@ wss.on('connection', (ws) => {
             ballvy = data.ballvy;
             game.ball.isMoving = true;
             game.players.find(p => p.hb).hb = false; // Clear existing ball carrier
-            console.log('>>> passMoving', ballx, bally, balldx, balldy, ballvx, ballvy);
+            //console.log('>>> passMoving', ballx, bally, balldx, balldy, ballvx, ballvy);
             broadcastBallState(game, { text: "Pass Thrown", type: "info" });
         } else if (data.type === 'restart') {
             restartGame();
@@ -507,6 +558,28 @@ wss.on('connection', (ws) => {
                 broadcastPlayerUpdate(player);
                 //console.log(`Updated position: ${playerId}, x=${data.x}, y=${data.y}`);
             }
+        } else if (data.type === 'selectOffensePlay') {
+            offensePlay = data.offensePlay;
+            game.playOffenseName = offensePlay; // Update play name
+            //offensePlayTrigger = true;
+            defensePlay = game.playDefenseName; // Keep current defense
+            console.log('**************************');
+            console.log('🏈>>> selectPlay off', offensePlay, 'def', defensePlay);
+            selectPlays(game.possession, offensePlay, defensePlay, offensePlayTrigger, defensePlayTrigger);
+            game.players = generatePlayers(losYardLine, plays.playHome, plays.playAway).map(p => ({ ...p }));
+            broadcastSelectPlay(game, { text: "Play SET Offense", type: "info" });
+        } else if (data.type === 'selectDefensePlay') {
+            defensePlay = data.defensePlay;
+            game.playDefenseName = defensePlay; // Update play name
+            offensePlay = game.playOffenseName; // Ensure offense play is set
+            console.log('**************************');
+            console.log('🏈>>> selectPlay def', defensePlay, offensePlay);
+            selectPlays(game.possession, offensePlay, defensePlay);
+            game.players = generatePlayers(losYardLine, plays.playHome, plays.playAway).map(p => ({ ...p }));
+            broadcastSelectPlay(game, { text: "Play SET Defense", type: "info" });
+        }
+        if (data.type === 'getGameState') {
+            console.log('gamestate payload', game);
         }
     });
     ws.on('close', () => game.clients.delete(ws));
@@ -625,7 +698,7 @@ setInterval(() => { // ============== gamerunning loop
         updatePhysics(game);
         broadcastState(game);
         if (game.ball.isMoving) {
-            console.log('game.ball.isMoving', game.ball.isMoving);
+            //console.log('game.ball.isMoving', game.ball.isMoving);
             handlePass();
         }
     }
@@ -696,7 +769,11 @@ function clockLogic() {
     // game.clock.s = clockDuration; // 10 minutes
     // game.playclock = 25;
     let message = { text: `qtr ${game.qtr} Begins`, type: 'info' };
-    const plays = selectPlays(game.possession);
+    //game.playOffenseName = 'I-Formation'; // Reset to default offense play
+    //game.playDefenseName = '4-3-Standard'; // Reset to default defense play
+    offensePlay = game.playOffenseName = 'I-Formation'; // Reset to default offense play
+    defensePlay = game.playDefenseName = '4-3-Standard'; // Reset to default defense play
+    const plays = selectPlays(game.possession, offensePlay, defensePlay);
     game.players = generatePlayers(losYardLine, plays.playHome, plays.playAway, game.homeSide, game.awaySide, game.losDirection, game.losYardLine).map(p => ({ ...p }));
     broadcastReset(game, message, firstDownYardLine, game.down, game.yardsToGo, losYardLine, game.possession);
 }
@@ -734,59 +811,59 @@ function restartGame() {
     broadcastClockUpdate(game);
 }
 function restartGamez() {
-  console.log('>>>>>> Game Restart Key - Q');
+    console.log('>>>>>> Game Restart Key - Q');
 
-  // 1) Preserve open sockets
-  const { clients } = game;
+    // 1) Preserve open sockets
+    const { clients } = game;
 
-  // 2) Reset to your blueprint state, keeping only clients
-  Object.assign(game, {
-    ...initialGameState,
-    id:      generateGameId(),
-    clients,               // carry over WebSocket connections
-  });
+    // 2) Reset to your blueprint state, keeping only clients
+    Object.assign(game, {
+        ...initialGameState,
+        id: generateGameId(),
+        clients,               // carry over WebSocket connections
+    });
 
-  // 3) Zero out scores & clocks
-  game.homeScore       = 0;
-  game.awayScore       = 0;
-  game.clock.s         = clockDuration;
-  //game.playClock.s     = playClockDuration;
+    // 3) Zero out scores & clocks
+    game.homeScore = 0;
+    game.awayScore = 0;
+    game.clock.s = clockDuration;
+    //game.playClock.s     = playClockDuration;
 
-  // 4) Reset field markers
-  game.playState            = 'kickoff';
-  game.losYardLine          = initialGameState.losYardLine || 50;
-  game.firstDownYardLine    = game.losYardLine + 10;
-  game.losDirection         = 1;             // or whatever your default is
-  game.homeSide             = 0;             // heading for home
-  game.awaySide             = Math.PI;       // heading for away
+    // 4) Reset field markers
+    game.playState = 'kickoff';
+    game.losYardLine = initialGameState.losYardLine || 50;
+    game.firstDownYardLine = game.losYardLine + 10;
+    game.losDirection = 1;             // or whatever your default is
+    game.homeSide = 0;             // heading for home
+    game.awaySide = Math.PI;       // heading for away
 
-  // 5) Pick & generate the brand-new roster
-  const { playHome, playAway } = selectPlays(game.possession);
-  game.players = generatePlayers(
-    game.losYardLine,
-    playHome,
-    playAway
-  ).map(p => ({ ...p }));
+    // 5) Pick & generate the brand-new roster
+    const { playHome, playAway } = selectPlays(game.possession);
+    game.players = generatePlayers(
+        game.losYardLine,
+        playHome,
+        playAway
+    ).map(p => ({ ...p }));
 
-  console.log('>>>>>> Game reset to initial state');
+    console.log('>>>>>> Game reset to initial state');
 
-  // 6) Broadcast the *entire* new state so clients fully resync
-  // (you can fold in your info/clock messages here too)
-  broadcastAll({
-    type:  'state',
-    state: {
-      players:            game.players,
-      homeScore:          game.homeScore,
-      awayScore:          game.awayScore,
-      clock:              game.clock,
-      playClock:          game.playClock,
-      losYardLine:        game.losYardLine,
-      firstDownYardLine:  game.firstDownYardLine,
-      playState:          game.playState,
-      possession:         game.possession,
-      //…and any other fields client needs…
-    }
-  });
+    // 6) Broadcast the *entire* new state so clients fully resync
+    // (you can fold in your info/clock messages here too)
+    broadcastAll({
+        type: 'state',
+        state: {
+            players: game.players,
+            homeScore: game.homeScore,
+            awayScore: game.awayScore,
+            clock: game.clock,
+            playClock: game.playClock,
+            losYardLine: game.losYardLine,
+            firstDownYardLine: game.firstDownYardLine,
+            playState: game.playState,
+            possession: game.possession,
+            //…and any other fields client needs…
+        }
+    });
 }
 
 // =================================================== END THE CLOCK
@@ -897,7 +974,7 @@ function updatePhysics(game) {
 
         // =============================================== OUT OF BOUNDS for p.hb
         // Check out-of-bounds for ball carrier
-        if (p.hb && (p.x < 10 || p.x > 130 || p.y < 8.5 || p.y > 77)) {
+        if (p.hb && (p.x < 10 || p.x > 130 || p.y < 10.6 || p.y > 69)) {
             console.log(`Player ${p.pid} is out of bounds!`);
             const frontEdgeX = getFrontEdgeX(p, game.playState); // Pass player object
             tackleMade(
@@ -971,7 +1048,7 @@ function removeBall() {
 }
 
 function handlePass() {
-    console.log('>>> handlePass');
+    //console.log('>>> handlePass');
     if (!game.ball || !game.ball.isMoving) return;
 
     // Move ball
@@ -983,7 +1060,7 @@ function handlePass() {
     game.ball.y = bally;
 
     const speed = Math.hypot(ballvx, ballvy);
-    console.log('Ball speed:', speed.toFixed(3));
+    //console.log('Ball speed:', speed.toFixed(3));
 
 
     // Interception logic
@@ -1029,13 +1106,13 @@ function handlePass() {
 
     // // Catch detection
     if (selectedReceiverR) {
-        console.log('Selected receiver:', selectedReceiverR);
+        //console.log('Selected receiver:', selectedReceiverR);
         const selectedReceiver = game.players.find(p => p.pid === selectedReceiverR);
         if (selectedReceiver) {
             const dx = game.ball.x - selectedReceiver.x;
             const dy = game.ball.y - selectedReceiver.y;
             const dist = Math.hypot(dx, dy);
-            console.log('Distance to receiver:', dist);
+            //console.log('Distance to receiver:', dist);
 
             // Example catch condition (adjust as needed)
             if (dist < 3 && speed < 10 && speed > 0.06) {
@@ -1069,7 +1146,7 @@ function handlePass() {
         tackleMade();
     } else {
         broadcastBallState(game);
-        console.log('Ball location:', ballx, bally, 'Ball speed:', speed);
+        //console.log('Ball location:', ballx, bally, 'Ball speed:', speed);
     }
 }
 
@@ -1171,9 +1248,39 @@ function broadcastPlayerUpdate(player) {
         // p: Number(game.play.toFixed(2)),
         // r: game.running
     };
-    console.log('player speed:', player.speed);
+    //console.log('player speed:', player.speed);
     // console.log('===========================');
     // console.log('...broadcastPlayerUpdate...');
+    // console.log('.moving individual player...');
+    // console.log('===========================');
+    game.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(payload));
+        }
+    });
+}
+
+// ====================================== BROADCAST PLAY
+function broadcastSelectPlay(game) {
+    const payload = {
+        type: 'selectPlay',
+        playOffense: game.playOffense,
+        playDefense: game.playDefense,
+        pl: game.players.map(p => ({
+            pid: p.pid,
+            x: Number(p.x.toFixed(2)), // Round to 2 decimals
+            y: Number(p.y.toFixed(2)),
+            h: Number(p.heading.toFixed(2)),
+            hb: p.hb,
+            ie: p.ie
+            //dv: Number(p.dialValue.toFixed(2))
+        }))
+    };
+    // console.log('playOffense - ', playOffense);
+    // console.log('playDefense - ', playDefense);
+    //console.log('player speed:', player.speed);
+    // console.log('===========================');
+    console.log('...broadcast Select Play...');
     // console.log('.moving individual player...');
     // console.log('===========================');
     game.clients.forEach(client => {

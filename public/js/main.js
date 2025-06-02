@@ -21,6 +21,11 @@ let gameRunning = false;
 let clockSeconds = 600; // Default until server update
 let playClock = 25; // Default until server update
 
+// ==================== PLAYS DISPLAY
+const gameOverlay = document.getElementById("playOverlay");
+const teamNameHeader = document.getElementById("teamNameHeader");
+const playsGrid = document.getElementById("playsGrid");
+
 // ==================== FIELD DIMESIONS
 // ** should server give us this on startup?
 const FIELD_WIDTH = 140;
@@ -48,6 +53,7 @@ let isRotatePlayer = false;
 let selectedPlayer = null;
 let selectedPlayerR = null;
 let selectedPlayerDial = null;
+let isHoverOn = null; // Flag to track hover state
 let lastMouseX = 0;
 let lastMouseY = 0;
 let dragOffsetX = 0;
@@ -75,11 +81,25 @@ let awayTeamName = "DALLAS"; // Away team name
 
 const logoImage = new Image();
 logoImage.src = 'images/stadium-center.png'; // Center image for the field
+
 // ============== PLAYER IMAGES
 const homeImage = new Image();
 homeImage.src = 'images/ef-g-saints.png';
+const homeImage2 = new Image();
+homeImage2.src = 'images/ef-wr-1.png'; // Duplicate for home team
+const homeImage3 = new Image();
+homeImage3.src = 'images/ef-qb-1.png'; // QB image for home team
+
 const awayImage = new Image();
 awayImage.src = 'images/ef-g-saints.png';
+const awayImage2 = new Image();
+awayImage2.src = 'images/ef-wr-1.png'; // Duplicate for away team
+const awayImage3 = new Image();
+awayImage3.src = 'images/ef-qb-1.png'; // QB image for away team
+
+// ============== PLAYER IMAGES FOR CARDS
+const defaultPlayerImg = new Image();
+defaultPlayerImg.src = 'images/playerimages/player-default.png'; // Default player image
 // ========================================= END PLAYER STUFF
 
 let gameState = {
@@ -125,10 +145,12 @@ const LOAD_TIMEOUT = 1000; // 2 seconds
 // =================== TIMER TO LET GAME LOAD
 setTimeout(() => {
     gameStarted = true;
+    messageCanvas.addMessage('loading game...', 'info');
     console.log('Timer complete, starting game');
     render();
 }, LOAD_TIMEOUT);
-
+console.log('homeTeam.playbooks:', homeTeam.playbooks);
+console.log('awayTeam.playbooks:', awayTeam.playbooks);
 
 // ================================= DEFINE FIELD CANVAS
 const fieldCanvas = document.createElement('canvas');
@@ -171,65 +193,90 @@ class MessageCanvas {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
-        this.messages = []; // Queue of { text, type, timeout }
+        this.messages = []; // { text, type, timeout }
         this.font = 'bold 30px Arial';
         this.padding = 10;
-        this.duration = msgDuration || 2500; // 3 seconds
+        this.duration = msgDuration || 2500; // 2.5 seconds default
+
         this.styles = {
-            success: { textColor: '#00FF00', bgColor: 'rgba(0, 100, 0, 0.75)' }, // Green for First Down
-            warning: { textColor: '#FF0000', bgColor: 'rgba(100, 0, 0, 0.75)' }, // Red for Turnover
-            info: { textColor: '#FFFFFF', bgColor: 'rgba(0, 0, 0, 0.75)' } // White for general
+            success: { textColor: '#00FF00', bgColor: 'rgba(0,100,0,0.75)' },
+            warning: { textColor: '#FF0000', bgColor: 'rgba(100,0,0,0.75)' },
+            info: { textColor: '#FFFFFF', bgColor: 'rgba(0,0,0,0.75)' }
         };
-        this.canvas.width = 720; // Match scorebug
-        this.canvas.height = 100; // Enough for multiple messages
-        this.canvas.style.display = 'none'; // Hidden initially
+
+        this.canvas.width = 720;
+        this.canvas.height = 100;
+        this.canvas.style.display = 'none';
     }
 
-    // Add a message to the queue
     addMessage(text, type = 'info') {
+        const expiresAt = Date.now() + this.duration;
         this.messages.push({
             text: text,
             type: type,
-            timeout: Date.now() + this.duration
+            timeout: expiresAt
         });
-        this.canvas.style.display = 'block'; // Show canvas
-        console.log(`Message added: ${text}, type: ${type}, queue:`, this.messages.map(m => m.text));
+
+        // Show the canvas immediately and draw the new message
+        this.canvas.style.display = 'block';
+        this.render();
+
+        // Schedule another render when this message should expire so it disappears
+        setTimeout(() => {
+            this.render();
+        }, this.duration + 50); // a small buffer to ensure timeout has passed
     }
 
-    // Render messages at top center
     render() {
-        if (!this.ctx) {
-            console.error('MessageCanvas context not available');
+        if (!this.ctx) return;
+
+        const now = Date.now();
+        // Remove any messages that have expired
+        this.messages = this.messages.filter(msg => msg.timeout > now);
+
+        // If no messages remain, hide the canvas and stop
+        if (this.messages.length === 0) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.canvas.style.display = 'none';
             return;
         }
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // Clear message canvas
-        const now = Date.now();
-        this.messages = this.messages.filter(msg => msg.timeout > now); // Remove expired
-        if (this.messages.length === 0) return; // Skip if no messages
-        //console.log('Rendering messages:', this.messages.map(m => m.text));
+
+        // Otherwise, draw all active messages
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
         this.ctx.font = this.font;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        let y = 20; // Start at top of messageCanvas
+
+        let y = 20;
         this.messages.forEach(msg => {
             const style = this.styles[msg.type] || this.styles.info;
             const metrics = this.ctx.measureText(msg.text);
             const textWidth = metrics.width;
-            const textHeight = 30; // Approximate height for 30px font
+            const textHeight = 30; // approximate for a 30px font
             const boxWidth = textWidth + this.padding * 2;
             const boxHeight = textHeight + this.padding * 2;
-            // Draw background
+
+            // Draw background box
             this.ctx.fillStyle = style.bgColor;
-            this.ctx.fillRect(this.canvas.width / 2 - boxWidth / 2, y - boxHeight / 2, boxWidth, boxHeight);
-            // Draw text
+            this.ctx.fillRect(
+                this.canvas.width / 2 - boxWidth / 2,
+                y - boxHeight / 2,
+                boxWidth,
+                boxHeight
+            );
+
+            // Draw the text
             this.ctx.fillStyle = style.textColor;
             this.ctx.fillText(msg.text, this.canvas.width / 2, y);
-            y += boxHeight + 10; // Stack messages vertically
+
+            y += boxHeight + 10; // stack messages vertically
         });
+
         this.ctx.restore();
     }
 }
+
 
 const messageCanvas = new MessageCanvas('messageCanvas');
 console.log('MessageCanvas initialized:', messageCanvas);
@@ -310,8 +357,8 @@ Ball Carrier: ${players.find(p => p.hb)?.pid || 'None'} (x=${players.find(p => p
 //     pixelsPerYard: 1440 / 140
 // });
 //const messageCanvas = new MessageCanvas('messageCanvas');
-const debugScreen = new DebugScreen();
-console.log('DebugScreen initialized:', debugScreen);
+//const debugScreen = new DebugScreen();
+//console.log('DebugScreen initialized:', debugScreen);
 
 // ============================ END DEBUG OVERLAY
 
@@ -344,16 +391,20 @@ ws.onmessage = (msg) => {
             gameState.mySide = data.side; // "home" or "away"
             gameState.token = data.token; // Player token for authentication
             gameState.gameId = data.gameId; // Game ID for this session
-            initControlsFor(gameState.mySide);
+            gameState.possession = data.possession; // Current possession side
+            console.log('data:', data);
+            console.log('gameState Possession:', gameState.possession);
+            //initControlsFor(gameState.mySide);
+
         }
         if (data.type === 'initialState') {
-                console.clear();
+            //console.clear();
             console.log('*************************');
             console.log('LOADING INITIAL STATE:');
             gameState.players = data.players.filter(p => p && p.pid);
             console.log('Initial state received:', JSON.stringify(data));
             // Clear out any old noise
-        
+
 
             // Start a grouped log
             console.group('%c🔄 Loading Initial State', 'color: #0af; font-weight: bold;');
@@ -392,6 +443,10 @@ ws.onmessage = (msg) => {
                 //player.hb = data.hb;
                 //console.log(`Received player update: ${data.pid}, x=${data.x}, y=${data.y}`);
             }
+        } else if (data.type === 'selectPlay') {
+            console.log(`Received play selection: ${data.playOffense}`);
+            players = data.pl.filter(p => p && p.pid);
+
         } else if (data.type === 'clockUpdate') {
             clockSeconds = data.s !== undefined ? data.s : clockSeconds;
             playClock = data.p !== undefined ? data.p : playClock;
@@ -442,6 +497,10 @@ ws.onmessage = (msg) => {
             players = data.pl.filter(p => p && p.pid);
             console.log('Reset event received:', JSON.stringify(data));
             console.log('Reset event');
+            gameState.players.forEach(p => {
+                // If for some reason defaultSpeed is undefined, fall back to 0
+                p.speed = (typeof p.defaultSpeed === 'number') ? p.defaultSpeed : 0;
+            });
             //gameState.players = players;
             const updates = {
                 los: v => (gameState.los = v, console.log(`Updated LOS: losYardLine=${v}`)),
@@ -474,6 +533,7 @@ ws.onmessage = (msg) => {
                 messageCanvas.addMessage(data.message.text, data.message.type);
                 console.log(`Processed message: ${data.message.text}, type: ${data.message.type}`);
             }
+            gameState.possession = data.poss;
             gameState.playMode = data.m;
             gameState.ball.isMoving = false;
             ballColor = 'white';
@@ -583,13 +643,243 @@ document.addEventListener('keydown', (e) => {
         console.log('===Event press p - Pass mode toggled');
     } else if (e.code === 'KeyZ') {
         resetZoom();
+
+        // ===========================================ZOOM IN ON PLAYER
+        // *** STtill working on - sort of works
+        //
+    } else if (isHoverOn && e.code === 'KeyA') {
+        e.preventDefault();
+        let newZoom = zoom + ZOOM_STEP;
+        if (newZoom > ZOOM_MAX) newZoom = ZOOM_MAX;
+        if (newZoom < ZOOM_MIN) newZoom = ZOOM_MIN;
+        if (newZoom === zoom) return; // no net change
+
+        // 2) Find which yard‐coordinate is under the mouse right now:
+        const { x: yardX, y: yardY } = getMouseYardCoords(mx, my);
+
+        const worldPx = yardsToPixels(yardX);
+        const worldPy = yardsToPixels(FIELD_HEIGHT - yardY);
+
+        // 4) Compute the field’s pixel‐center:
+        const centerPx = yardsToPixels(FIELD_WIDTH / 2);
+        const centerPy = yardsToPixels(FIELD_HEIGHT / 2);
+
+        const newPanX = - newZoom * (worldPx - centerPx);
+        const newPanY = - newZoom * (worldPy - centerPy);
+
+        // 6) Commit and redraw
+        zoom = newZoom;
+        panX = newPanX;
+        panY = newPanY;
+        fieldDirty = true; // Redraw field on zoom change
+        renderGame(); // No need for fieldDirty here, only view changes
     } else if (e.code === 'KeyT') {
         console.log('Vairables', gameState)
         console.log('Websocket', ws)
+    } else if (e.code === 'KeyO') {
+        // ==================================================== PLAY MAKER
+        // ** outputs positions to consoel for making plays
+        // === (A) Grab the current LOS from gameState ===
+        // Make sure gameState.losYardLine is defined and up-to-date
+        const los = gameState.los || 0; // e.g. 20 if LOS is 20
+        console.log(`Current LOS: ${los} yards`);
+        // === (B) Collect “home” players into an object keyed by "01".."11" ===
+        const formation = {};
+
+        players
+            .filter(p => p.pid && p.pid.includes('-h-'))
+            .forEach(p => {
+                console.log('p.x', p.x);
+                const id = extractTwoDigitId(p.pid);
+
+                // 1) Compute x *relative to LOS* (in yards):
+                //    Example: if LOS=20 and p.x=17, then relX = 17 - 20 = -3
+                const relX = typeof p.x === 'number' ? p.x - los : 0;
+
+                // 2) y is always absolute yard coordinate (same as before)
+                const midlineY = FIELD_HEIGHT / 2;
+                let relY = 0;
+                if (typeof p.y === 'number') {
+                    relY = (p.y - midlineY) / (PLAYABLE_WIDTH / 360);
+                    // If you want to strip any tiny floating‐point noise to, say, one decimal:
+                    // relY = parseFloat(relY.toFixed(2));
+                }
+
+                // 3) heading (h), dialValue (dv), hasBall (hb), ineligible (ie)
+                const heading = typeof p.h === 'number' ? p.h : 0;
+                const dialVal = typeof p.dialValue === 'number' ? p.dialValue : 0;
+                const hasBall = typeof p.hb === 'boolean' ? p.hb : false;
+                const inelig = typeof p.ie === 'boolean' ? p.ie : false;
+
+                formation[id] = {
+                    x: relX,
+                    y: relY,
+                    h: heading,
+                    dv: dialVal,
+                    hb: hasBall,
+                    ie: inelig
+                };
+            });
+
+        // === (C) Build the JS‐literal string in the requested format ===
+        //      Change "I-Formation" to whatever play name you want
+        let out = `"New PLay Name": {\n`;
+
+        Object.keys(formation)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .forEach((id, idx, arr) => {
+                const p = formation[id];
+                // add comma except after the last entry
+                const comma = idx < arr.length - 1 ? ',' : '';
+                out += `  "${id}": { x: ${p.x.toFixed(2)}, y: ${p.y.toFixed(2)}, h: ${p.h.toFixed(2)}, dv: ${p.dv.toFixed(0)}, hb: ${p.hb}, ie: ${p.ie} }${comma}\n`;
+            });
+
+        out += `},`;
+
+        // === (D) Print to console so you can copy/paste into playbook ===
+        console.log(out);
+        console.log("▶ Copy the above block (including trailing comma) into your playbook.");
+    } else if (e.code === 'KeyI') {
+        // === PLAYBOOK OVERLAY (Key “I”) ===
+        console.log('>>> Key I pressed - opening playbook overlay');
+        console.log('   gameState.mySide   =', gameState.mySide);
+        console.log('   gameState.possession=', gameState.possession);
+        //     // (1) Set the team name in the overlay
+        //     if (window.homeTeam && homeTeam.name) {
+        //         teamNameHeader.textContent = homeTeam.name;
+        //     } else {
+        //         teamNameHeader.textContent = "Unknown Team";
+        //     }
+
+        //     // (2) Clear any old cells and rebuild for this team’s offensive playbook
+        //     playsGrid.innerHTML = "";
+
+        //     const offensivePB = (window.homeTeam && homeTeam.playbooks && homeTeam.playbooks.offensive)
+        //         ? homeTeam.playbooks.offensive
+        //         : {};
+
+        //     Object.keys(offensivePB).forEach((playName, idx) => {
+        //         const cell = document.createElement("div");
+        //         cell.classList.add("play-cell");
+
+        //         // Choose a color class (cycle through four example colors)
+        //         const colors = ["play-red", "play-green", "play-orange", "play-blue"];
+        //         cell.classList.add(colors[idx % colors.length]);
+
+        //         cell.textContent = playName;
+        //         cell.addEventListener("click", (evt) => {
+        //             evt.stopPropagation();  // prevent overlay‐click from immediately hiding
+
+        //             console.log(`Selected play: ${playName}`);
+        //             ws.send(JSON.stringify({
+        //                 type: 'selectPlay',
+        //                 gameID: gameID,
+        //                 //team: myTeam,
+        //                 offensePlay: playName
+        //             }));
+
+        //             // Hide the overlay immediately so the user sees their choice took effect
+        //             gameOverlay.style.display = "none";
+        //         });
+
+        //         playsGrid.appendChild(cell);
+        //     });
+
+        //     // (4) Show the overlay (75% of the canvas, centered)
+        //     gameOverlay.style.display = "flex";
+        // }
+
+        // (1) Show the team name at top
+        if (window.homeTeam && homeTeam.name && window.awayTeam && awayTeam.name) {
+            // If I'm the home client:
+            if (gameState.mySide === 'home') {
+                teamNameHeader.textContent = homeTeam.name;
+            } else {
+                teamNameHeader.textContent = awayTeam.name;
+            }
+        } else {
+            teamNameHeader.textContent = "Unknown Team";
+        }
+
+        // (2) Clear previous cells
+        playsGrid.innerHTML = "";
+
+        // (3) Pick the right playbook based on who has possession
+        let playbookToShow = {};
+        if (gameState.possession === 'home') {
+            // Home is on offense. If I'm home, show offense; if I'm away, show defense.
+            if (gameState.mySide === 'home') {
+                playbookToShow = homeTeam.playbooks.offensive;
+            } else {
+                playbookToShow = awayTeam.playbooks.defensive;
+            }
+        } else {
+            // Away is on offense. If I'm away, show its offense; if I'm home, show its defense.
+            if (gameState.mySide === 'away') {
+                playbookToShow = awayTeam.playbooks.offensive;
+            } else {
+                playbookToShow = homeTeam.playbooks.defensive;
+            }
+        }
+        console.log('   playbookToShow keys =', Object.keys(playbookToShow));
+        // (4) Build one “.play-cell” per playName
+        Object.keys(playbookToShow).forEach((playName, idx) => {
+            const cell = document.createElement('div');
+            cell.classList.add('play-cell');
+
+            // cycle through color classes
+            const colors = ['play-red', 'play-green', 'play-orange', 'play-blue'];
+            cell.classList.add(colors[idx % colors.length]);
+
+            cell.textContent = playName;
+
+            cell.addEventListener('click', (evt) => {
+                evt.stopPropagation();
+
+                if (gameState.possession === gameState.mySide) {
+                    // I am on offense → send offensePlay
+                    console.log(`Selected offense play: ${playName}`);
+                    ws.send(JSON.stringify({
+                        type: 'selectOffensePlay',
+                        gameID: gameID,
+                        offensePlay: playName
+                    }));
+                } else {
+                    // I am on defense → send defensePlay
+                    console.log(`Selected defense play: ${playName}`);
+                    ws.send(JSON.stringify({
+                        type: 'selectDefensePlay',
+                        gameID: gameID,
+                        defensePlay: playName
+                    }));
+                }
+
+                gameOverlay.style.display = 'none';
+            });
+
+            playsGrid.appendChild(cell);
+        });
+
+        // (5) Finally, show the overlay
+        gameOverlay.style.display = 'flex';
     }
-
-
+    if (e.code === 'KeyG') {
+        e.preventDefault();
+        console.log('>>> G pressed: requesting gameState dump from server');
+        ws.send(JSON.stringify({
+            type: 'getGameState',
+            gameId: gameID    // use whatever variable holds your current gameId
+        }));
+    }
 });
+
+gameOverlay.addEventListener("click", () => {
+    gameOverlay.style.display = "none";
+});
+function extractTwoDigitId(pid) {
+    const parts = pid.split('-');
+    return parts[2].padStart(2, '0');
+}
 // ====================================== END GAME SWITCH
 
 // ====================================== MOUSE HOVER PLAYER CHECK
@@ -630,6 +920,11 @@ function isMouseHoverPlayer(mx, my, p) {
     // if (isHover) {
     //     console.log(`Hover on ${p.i}: mx=${mx.toFixed(2)}, my=${my.toFixed(2)}, zoomedX=${zoomedX.toFixed(2)}, zoomedY=${zoomedY.toFixed(2)}, px=${px.toFixed(2)}, py=${py.toFixed(2)}, localX=${localX.toFixed(2)}, localY=${localY.toFixed(2)}`);
     // }
+    if (isHover) {
+        isHoverOn = true;
+    } else {
+        isHoverOn = false;
+    }
     return isHover;
 }
 
@@ -711,6 +1006,15 @@ canvas.addEventListener('mousedown', (e) => {
     if (selectedPlayer && !gameRunning) {
         if (e.button === 2 && showReceivers) {    // == right click to select receiver if P clicked
             e.preventDefault();
+            const pidParts = selectedPlayer.pid.split('-');
+            const suffix = pidParts[2];  // e.g. "07", "10", etc.
+            if (!['07', '08', '09', '10', '11'].includes(suffix)) {
+                // Not an eligible receiver—ignore the click (or show a message)
+                console.log(`Player ${selectedPlayer.pid} is not a receiver.`);
+                messageCanvas.addMessage(`Not an eligible receiver`, 'warning');
+                messageCanvas.render();
+                return;
+            }
             selectedPlayerR = selectedPlayer.pid;
             gameState.dragStart = { x: gameState.ball.x, y: gameState.ball.y };
             gameState.dragCurrent = getMouseYardCoords(mx, my);
@@ -718,6 +1022,8 @@ canvas.addEventListener('mousedown', (e) => {
                 type: 'passMode',
                 selectedPlayerR: selectedPlayerR
             }));
+            messageCanvas.addMessage(`${selectedPlayerR} is selected as receiver`, 'info');
+            messageCanvas.render();
             console.log('Selected player for pass:', selectedPlayerR);
             console.log('dragStart:', gameState.dragStart.x, gameState.dragStart.y);
             //lastMouseX = mx;
@@ -840,6 +1146,9 @@ canvas.addEventListener('mouseleave', () => {
     isAdjustingDial = false;
     selectedPlayer = null;
     hoveredPlayer = null;
+    isHoverOn = false;
+    hidePlayerCard();
+
     if (gameStarted) render();
 });
 
@@ -1171,6 +1480,7 @@ function getGamePlayer(pid) {
 function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
     // If `p` came from a secondary array, pull the full data:
     const fullP = getGamePlayer(p.pid) || p;
+    //showPlayerCard(fullP);
 
     const px = yardsToPixels(baseWidth);
     const py = yardsToPixels(baseHeight);
@@ -1197,7 +1507,6 @@ function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
         `Speed:    ${speedStr}`,
         `Strength: ${strStr}`,
     ];
-
     // 3) styling…
     const fontSize = yardsToPixels(0.8);
     ctx.font = `${fontSize}px sans-serif`;
@@ -1229,7 +1538,30 @@ function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
 
     ctx.restore();
 }
+// ===== PLAYER CARD
+const playerCard = document.getElementById('playerCard');
+function showPlayerCard(p) {
+    // Build inner HTML (150×250 area). You can add more fields if you want.
+    playerCard.innerHTML = `
+    <img src="${defaultPlayerImg.src}" alt="${p.name}" class="player-card-img" />
+    <h3>${p.name}</h3>
+    <p><strong>ID:</strong> ${p.pid}</p>
+    <p><strong>Position:</strong> ${p.position || 'N/A'}</p>
+    <p><strong>Speed:</strong> ${p.speed.toFixed(2)}</p>
+    <p><strong>Default Speed:</strong> ${p.defaultSpeed.toFixed(2)}</p>
+    <p><strong>Strength:</strong> ${p.mass.toFixed(2)}</p>
+    <p><strong>HB:</strong> ${p.hb ? 'Yes' : 'No'}</p>
+    <p><strong>IE:</strong> ${p.ie ? 'Yes' : 'No'}</p>
+  `;
+    playerCard.style.display = 'block';
+    //console.log(`Showing player card for ${p.name} (${p.pid})`);
+}
 
+/** Hides the player card. */
+function hidePlayerCard() {
+    playerCard.style.display = 'none';
+}
+// ===== END PLAYER CARD
 
 // =============== PLayer bases
 function drawRoundedRect(ctx, x, y, width, height, radius) {
@@ -1315,18 +1647,49 @@ function renderGame() {
             ctx.lineWidth = yardsToPixels(0.4);
             ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
         }
-        const image = p.pid.includes('-h-') ? homeImage : awayImage;
+        if (p.hb) {
+            // ctx.fillStyle = ballColor;
+            // ctx.beginPath();
+            // ctx.arc(yardsToPixels(0), yardsToPixels(0), yardsToPixels(0.5), 0, 2 * Math.PI);
+            // ctx.fill();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.8)"; // highlight with 50% opacity
+            ctx.lineWidth = 3;
+            ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
+        }
+        // const image = p.pid.includes('-h-') ? homeImage : awayImage;
+        let image;
+        if (p.pid.includes('-h-')) {
+            // Extract the two‐digit ID (e.g. "09", "10", "11")
+            const id = p.pid.split('-')[2];
+            if (['07', '08', '09', '10', '11'].includes(id)) {
+                image = homeImage2;
+            } else if (['06',].includes(id)) {
+                image = homeImage3;
+            } else {
+                image = homeImage;
+            }
+        } else {
+            const id = p.pid.split('-')[2];
+            if (['07', '08', '09', '10', '11'].includes(id)) {
+                image = awayImage2;
+            } else if (['06',].includes(id)) {
+                image = awayImage3;
+            } else {
+                image = awayImage;
+            }
+        }
         if (image.complete) {
             ctx.drawImage(image, -yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
         }
+
         if (p.hb) {
             ctx.fillStyle = ballColor;
             ctx.beginPath();
             ctx.arc(yardsToPixels(0), yardsToPixels(0), yardsToPixels(0.5), 0, 2 * Math.PI);
             ctx.fill();
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.8)"; // highlight with 50% opacity
-            ctx.lineWidth = 3;
-            ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
+            //     ctx.strokeStyle = "rgba(255, 255, 255, 0.8)"; // highlight with 50% opacity
+            //     ctx.lineWidth = 3;
+            //     ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
         }
         // ======================== Highlight eligible player for pass
         if (gameState.playMode === 1 && p.ie === true && showReceivers) {
@@ -1338,6 +1701,13 @@ function renderGame() {
         if (isAdjustingDial && p.pid === selectedPlayerDial) {
             console.log('Drawing dial for player:', p.pid);
             drawLargeDialOverlay(p);
+        }
+        if (hoveredPlayer) {
+            // Only call this once, with the one hoveredPlayer
+            const fullP = getGamePlayer(hoveredPlayer.pid) || hoveredPlayer;
+            showPlayerCard(fullP);
+        } else {
+            hidePlayerCard();
         }
         ctx.strokeStyle = 'yellow';
         ctx.lineWidth = yardsToPixels(0.1);
@@ -1377,7 +1747,7 @@ function renderGame() {
     const yardX = pixelsToYards(mx);
     const yardY = pixelsToYards(my);
 
-    // Draw yard coordinates
+    // //Draw yard coordinates
     // ctx.fillStyle = 'white';
     // ctx.font = `${yardsToPixels(baseHeight)}px Arial`;
     // ctx.fillText(formatClock(gameState.gameClock), yardsToPixels(5), yardsToPixels(FIELD_HEIGHT - 13));
