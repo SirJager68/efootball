@@ -151,7 +151,7 @@ let rightEndZone = 120; // Right end zone
 let leftEndZone = 20; // Left end zone
 let isTouchDown = false; // Flag for touchdown detection
 let touchdownDetected = false; // Flag for touchdown detection
-let clockDuration = 20;
+let clockDuration = 90;
 let timeExpired = false; // Flag for time expired
 
 let ballx = 0;
