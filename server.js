@@ -765,6 +765,7 @@ function clockLogic() {
     } else if (game.qtr > 4) {
         game.qtr = "0";
         gameover();
+        return;
     }
     // game.clock.s = clockDuration; // 10 minutes
     // game.playclock = 25;
@@ -781,8 +782,9 @@ function clockLogic() {
 function gameover() {
     game.gameRunning = false;
     game.playState = 'gameover';
+    console.log('>>> GAME OVER!!!');
     let message = { text: `GAME OVER`, type: 'info' };
-    broadcastReset(game, message);
+    broadcastGameOver(game, message);
 }
 
 // Reset game state to initial values
@@ -1394,6 +1396,49 @@ function broadcastClockUpdate(game) {
     } catch (error) {
         console.error('Error broadcasting clock update:', error);
     }
+}
+
+// =============================Broadcast reset event
+function broadcastGameOver(game, message, firstDownYardLine, down, yardsToGo, qtr,) {
+    const payload = {
+        type: 'gameover',
+        // los: Number(game.losYardLine),
+        // fdl: Number(game.firstDownYardLine),
+        // ytg: (game.yardsToGo.toFixed(2)),
+        // qtr: game.qtr,
+        // r: game.gameRunning,
+        // m: 0,
+        // down: game.down,
+        // poss: game.possession,
+        message: message,
+        homeScore: game.homeScore,
+        awayScore: game.awayScore,
+        // playState: game.playState,
+        // homeTD: game.homeTD,
+        // awayTD: game.awayTD,
+        // gameStart: game.gameStart,
+        // currentPlay: game.currentPlay,
+        // s: Number((game.clock.s).toFixed(2)),
+        // p: Number(game.playclock.toFixed(0)),
+        // pl: game.players.map(p => ({
+        //     pid: p.pid,
+        //     x: Number(p.x.toFixed(2)),
+        //     y: Number(p.y.toFixed(2)),
+        //     h: Number(p.heading.toFixed(2)),
+        //     hb: p.hb,
+        //     s: Number(p.speed.toFixed(2))
+        // }))
+
+    };
+    console.log('=========================');
+    console.log('...broadcastGame Over...');
+    console.log('=========================');
+    console.log('>>', JSON.stringify(payload));
+    game.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(payload));
+        }
+    });
 }
 
 module.exports = {

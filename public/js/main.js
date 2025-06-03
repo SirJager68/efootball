@@ -26,6 +26,12 @@ const gameOverlay = document.getElementById("playOverlay");
 const teamNameHeader = document.getElementById("teamNameHeader");
 const playsGrid = document.getElementById("playsGrid");
 
+// ==================== STATUS OVERYLAY
+const statusOverlay = document.getElementById('statusOverlay');
+const statusTitle = document.getElementById('statusTitle');
+const statusMessage = document.getElementById('statusMessage');
+const statusButton = document.getElementById('statusButton');
+
 // ==================== FIELD DIMESIONS
 // ** should server give us this on startup?
 const FIELD_WIDTH = 140;
@@ -282,6 +288,28 @@ const messageCanvas = new MessageCanvas('messageCanvas');
 console.log('MessageCanvas initialized:', messageCanvas);
 
 // ============================ END MESSAGE SYSTEM
+
+// ============================ STATUS OVERYLAY
+function showOverlay(titleText, messageText, showButton = false, buttonText = '') {
+    statusTitle.textContent = titleText;
+    statusMessage.textContent = messageText;
+
+    if (showButton) {
+        statusButton.style.display = 'inline-block';
+        statusButton.textContent = buttonText || 'Continue';
+    } else {
+        statusButton.style.display = 'none';
+    }
+
+    statusOverlay.style.display = 'flex';
+}
+
+// Hide the overlay
+function hideOverlay() {
+    statusOverlay.style.display = 'none';
+}
+// ============================ END STATUS OVERLAY
+
 
 //===========================================
 // ============================ DEBUG OVERLAY
@@ -559,6 +587,19 @@ ws.onmessage = (msg) => {
             gameRunning = data.r;
             ballColor = 'blue';
             toggleVibrateSound();
+        } else if (data.type === 'gameover') {
+            console.log('Game over received:', data);
+            gameState.playState = 'gameover';
+            gameState.gameStart = false;
+            gameRunning = false;
+            //players = data.pl.filter(p => p && p.pid);
+            clockSeconds = 0; // Stop the clock
+            playClock = 0; // Stop the play clock
+            //toggleVibrateSound();
+            messageCanvas.addMessage('Game Over', 'info');
+            showOverlay('Game Over', 'Would you like to play a nice game of chess?', true, 'Restart Game');
+            console.log('Game over state set, players:', players);
+            //debugScreen.update(gameState, players); // Update debug screen}
         } else {
 
             //== INITIAL

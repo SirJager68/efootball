@@ -82,18 +82,17 @@ console.log("Loading awayTeam.js...");
 
     const defensivePlaysAway = {
         "4-3-Standard": {
-            // Placeholder, replace with your actual formation
-            "01": { x: 3, y: -30, h: 0, dv: 0, hb: false }, // Defensive End (DE, left)
-            "02": { x: 3, y: -10, h: 0, dv: 0, hb: false }, // Defensive Tackle (DT, left)
-            "03": { x: 3, y: 10, h: 0, dv: 0, hb: false }, // Defensive Tackle (DT, right)
-            "04": { x: 3, y: 30, h: 0, dv: 0, hb: false }, // Defensive End (DE, right)
-            "05": { x: 3, y: -20, h: 0, dv: 0, hb: false }, // Outside Linebacker (OLB, left)
-            "06": { x: 3, y: 0, h: 0, dv: 0, hb: false }, // Middle Linebacker (MLB)
-            "07": { x: 3, y: 20, h: 0, dv: 0, hb: false }, // Outside Linebacker (OLB, right)
-            "08": { x: 7, y: -80, h: 0, dv: 0, hb: false }, // Cornerback (CB, left)
-            "09": { x: 7, y: 80, h: 0, dv: 0, hb: false }, // Cornerback (CB, right)
-            "10": { x: 40, y: -30, h: 0, dv: 0, hb: false }, // Strong Safety (SS)
-            "11": { x: 40, y: 30, h: 0, dv: 0, hb: false } // Free Safety (FS)
+            "01": { x: 3.90, y: -20.69, h: 3.10, dv: 0, hb: false, ie: false },
+            "02": { x: 3.90, y: -5.57, h: 3.15, dv: 0, hb: false, ie: false },
+            "03": { x: 3.81, y: 10.79, h: 3.10, dv: 0, hb: false, ie: false },
+            "04": { x: 3.93, y: 26.57, h: 3.10, dv: 0, hb: false, ie: false },
+            "05": { x: 10.81, y: -33.83, h: 3.03, dv: 0, hb: false, ie: false },
+            "06": { x: 12.66, y: 5.25, h: 3.16, dv: 0, hb: false, ie: false },
+            "07": { x: 9.76, y: 39.55, h: 3.23, dv: 0, hb: false, ie: false },
+            "08": { x: 7.21, y: -76.71, h: 3.17, dv: 0, hb: false, ie: false },
+            "09": { x: 6.68, y: 78.06, h: 3.19, dv: 0, hb: false, ie: false },
+            "10": { x: 21.57, y: -23.48, h: 3.10, dv: 0, hb: false, ie: false },
+            "11": { x: 21.30, y: 30.89, h: 3.18, dv: 0, hb: false, ie: false }
         },
         "dal 3-4-Safety": {
             // Placeholder, replace with your actual formation
@@ -108,6 +107,19 @@ console.log("Loading awayTeam.js...");
             "09": { x: 7, y: 80, h: 0, dv: 0, hb: false }, // Cornerback (CB, right)
             "10": { x: 40, y: -30, h: 0, dv: 0, hb: false }, // Strong Safety (SS)
             "11": { x: 30, y: 30, h: 0, dv: 0, hb: false } // Free Safety (FS)
+        },
+        "3-3-Base": {
+            "01": { x: 3.93, y: -15.91, h: 2.90, dv: 0, hb: false, ie: false },
+            "02": { x: 3.41, y: 7.10, h: 3.15, dv: 0, hb: false, ie: false },
+            "03": { x: 4.12, y: 26.28, h: 3.20, dv: 0, hb: false, ie: false },
+            "04": { x: 14.22, y: 36.88, h: 3.30, dv: 0, hb: false, ie: false },
+            "05": { x: 13.82, y: -24.83, h: 2.83, dv: 0, hb: false, ie: false },
+            "06": { x: 13.01, y: 7.47, h: 3.06, dv: 0, hb: false, ie: false },
+            "07": { x: 22.25, y: 57.85, h: 3.23, dv: 0, hb: false, ie: false },
+            "08": { x: 9.24, y: -71.11, h: 3.17, dv: 0, hb: false, ie: false },
+            "09": { x: 9.16, y: 75.45, h: 3.19, dv: 0, hb: false, ie: false },
+            "10": { x: 23.22, y: -29.41, h: 3.10, dv: 0, hb: false, ie: false },
+            "11": { x: 25.07, y: 7.71, h: 3.18, dv: 0, hb: false, ie: false }
         },
         'Kickoff': {
             '01': { x: 3, y: -30, h: 0, dv: 0, hb: false, ie: false },
