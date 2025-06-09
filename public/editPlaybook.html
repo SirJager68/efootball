@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Team Playbook Editor</title>
+  <style>
+    /* ────────────────────────────────────────────────────────────────────────── */
+    /* Basic Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #111;
+      color: #eee;
+      font-family: sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* ────────────────────────────────────────────────────────────────────────── */
+    /* Tabs */
+    #tabs {
+      background: #222;
+      display: flex;
+      border-bottom: 2px solid #444;
+    }
+    #tabs button {
+      flex: 1;
+      padding: 1rem;
+      background: #222;
+      color: #aaa;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s, color 0.2s;
+    }
+    #tabs button.active {
+      background: #1a1a1a;
+      color: #fff;
+    }
+    #tabs button:hover:not(.active) {
+      background: #333;
+      color: #fff;
+    }
+    /* ────────────────────────────────────────────────────────────────────────── */
+    /* Container for tab content */
+    #content {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .tabPage {
+      display: none;
+      flex: 1;
+      overflow: auto;
+      padding: 1rem;
+    }
+    .tabPage.active {
+      display: block;
+    }
+    /* ────────────────────────────────────────────────────────────────────────── */
+    /* Cover Page */
+    #coverTab {
+      text-align: center;
+    }
+    #coverTab h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: #00ffff;
+      text-shadow: 0 0 8px #00ffff;
+    }
+    #teamLogo {
+      max-width: 200px;
+      margin-bottom: 2rem;
+    }
+    /* ────────────────────────────────────────────────────────────────────────── */
+    /* Roster Page */
+    #rosterTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    #rosterTable th,
+    #rosterTable td {
+      border: 1px solid #444;
+      padding: 0.5rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    #rosterTable th {
+      background: #333;
+    }
+    /* ────────────────────────────────────────────────────────────────────────── */
+    /* Playbook Pages (Offense & Defense) */
+    #playSplitter {
+      display: flex;
+      height: calc(100% - 2rem);
+    }
+    /* Left column: Play list + forms */
+    .playListContainer {
+      width: 280px;
+      background: #1a1a1a;
+      border-right: 2px solid #444;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    .playListContainer h2 {
+      text-align: center;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+    .play-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #333;
+    }
+    .play-item span {
+      flex: 1;
+      cursor: pointer;
+      color: #00ffff;
+      transition: color 0.2s;
+    }
+    .play-item span:hover {
+      color: #fff;
+    }
+    .deleteBtn {
+      background: #b33;
+      border: none;
+      color: #fff;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .deleteBtn:hover {
+      background: #d55;
+    }
+    .playListContainer form {
+      margin-top: 1rem;
+    }
+    .playListContainer form input,
+    .playListContainer form select,
+    .playListContainer form textarea,
+    .playListContainer form button {
+      width: 100%;
+      margin-bottom: 0.5rem;
+      padding: 0.4rem;
+      font-size: 0.9rem;
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      box-sizing: border-box;
+    }
+    .playListContainer form button {
+      background: #28a;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      transition: background 0.2s;
+    }
+    .playListContainer form button:hover {
+      background: #3ab;
+    }
+    /* Right column: Play details */
+    .playDetailsContainer {
+      flex: 1;
+      padding: 1rem;
+      overflow: auto;
+      position: relative;
+    }
+    .playDetailsContainer h2 {
+      margin-bottom: 1rem;
+    }
+    .playDetailsContainer table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+    }
+    .playDetailsContainer th,
+    .playDetailsContainer td {
+      border: 1px solid #444;
+      padding: 0.4rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .playDetailsContainer th {
+      background: #333;
+    }
+    .playDetailsContainer td input {
+      width: 100%;
+      padding: 0.2rem;
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+    .playDetailsContainer td input[type="checkbox"] {
+      width: auto;
+      margin-top: 0.2rem;
+    }
+    #saveBtn {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      padding: 0.6rem 1.2rem;
+      background: #2a8;
+      border: none;
+      color: #111;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    #saveBtn:hover {
+      background: #3bc;
+    }
+  </style>
+</head>
+<body>
+  <header>🔧 <strong>Team Playbook Editor</strong></header>
+
+  <!-- Load homeTeam.js so window.homeTeam is available -->
+  <script src="js/homeTeam.js"></script>
+
+  <!-- Tabs -->
+  <div id="tabs">
+    <button class="tabBtn active" data-tab="coverTab">Cover</button>
+    <button class="tabBtn" data-tab="rosterTab">Roster</button>
+    <button class="tabBtn" data-tab="offenseTab">Offense</button>
+    <button class="tabBtn" data-tab="defenseTab">Defense</button>
+  </div>
+
+  <!-- Tab Content -->
+  <div id="content">
+    <!-- Cover Page -->
+    <div id="coverTab" class="tabPage active">
+      <h1 id="teamNameHeader">Team Name Playbook</h1>
+      <!-- Replace src with your actual team logo path -->
+      <img id="teamLogo" src="images/team-logo.png" alt="Team Logo" />
+      <p style="margin-top:1rem; font-size:1rem; color:#ccc;">
+        Use the tabs above to view and edit roster, offensive plays, or defensive plays.
+      </p>
+    </div>
+
+    <!-- Roster Page -->
+    <div id="rosterTab" class="tabPage">
+      <h2>Roster</h2>
+      <table id="rosterTable">
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Position</th><th>Speed</th><th>Strength</th>
+          </tr>
+        </thead>
+        <tbody id="rosterBody"><!-- filled by JS --></tbody>
+      </table>
+    </div>
+
+    <!-- Offense Page -->
+    <div id="offenseTab" class="tabPage">
+      <h2>Offensive Playbook</h2>
+      <div id="playSplitter">
+        <!-- Left: Play List & Forms -->
+        <div class="playListContainer">
+          <div class="playListHeader">
+            <h2>Offense Plays</h2>
+          </div>
+          <div id="offPlaysContainer"><!-- filled by JS --></div>
+
+          <!-- Add New Offensive Play -->
+          <form id="newOffForm">
+            <input type="text" id="newOffName" placeholder="New play name…" required />
+            <button type="submit">Add Offensive Play</button>
+          </form>
+
+          <!-- Import Offensive Play -->
+          <div id="importOffForm">
+            <h3>Import Offensive Play</h3>
+            <input type="text" id="importOffName" placeholder="Play Name" />
+            <textarea id="importOffPositions"
+                      placeholder='{
+  "01": { x: -3, y: 0, h: 0, dv: 0, hb: false, ie: false },
+  ... through "11" ...
+}'></textarea>
+            <button id="importOffBtn" type="button">Import Offensive Play</button>
+          </div>
+        </div>
+
+        <!-- Right: Play Details -->
+        <div class="playDetailsContainer">
+          <h2 id="offDetailsTitle">Select an offensive play</h2>
+          <table id="offDetailsTable"><!-- filled by JS --></table>
+          <button id="saveOffBtn">Export Offense JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Defense Page -->
+    <div id="defenseTab" class="tabPage">
+      <h2>Defensive Playbook</h2>
+      <div id="playSplitter">
+        <!-- Left: Play List & Forms -->
+        <div class="playListContainer">
+          <div class="playListHeader">
+            <h2>Defense Plays</h2>
+          </div>
+          <div id="defPlaysContainer"><!-- filled by JS --></div>
+
+          <!-- Add New Defensive Play -->
+          <form id="newDefForm">
+            <input type="text" id="newDefName" placeholder="New play name…" required />
+            <button type="submit">Add Defensive Play</button>
+          </form>
+
+          <!-- Import Defensive Play -->
+          <div id="importDefForm">
+            <h3>Import Defensive Play</h3>
+            <input type="text" id="importDefName" placeholder="Play Name" />
+            <textarea id="importDefPositions"
+                      placeholder='{
+  "01": { x: 3, y: -30, h: 3.14, dv: 0, hb: false, ie: false },
+  ... through "11" ...
+}'></textarea>
+            <button id="importDefBtn" type="button">Import Defensive Play</button>
+          </div>
+        </div>
+
+        <!-- Right: Play Details -->
+        <div class="playDetailsContainer">
+          <h2 id="defDetailsTitle">Select a defensive play</h2>
+          <table id="defDetailsTable"><!-- filled by JS --></table>
+          <button id="saveDefBtn">Export Defense JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ──────────────────────────────────────────────────────────────────────────────
+    // State
+    let playbookData = { offensive: {}, defensive: {} };
+    let rosterOffense = [], rosterDefense = [];
+    let selectedOffPlay = null, selectedDefPlay = null;
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // TAB SWITCHING LOGIC
+    const tabButtons = document.querySelectorAll('#tabs .tabBtn');
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Remove active from all buttons
+        tabButtons.forEach(b => b.classList.remove('active'));
+        // Hide all pages
+        document.querySelectorAll('.tabPage').forEach(pg => pg.classList.remove('active'));
+
+        // Activate this button
+        btn.classList.add('active');
+        // Show corresponding page
+        const tabId = btn.dataset.tab;
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // ON LOAD: Copy homeTeam.js data into local state
+    window.addEventListener('DOMContentLoaded', () => {
+      if (!window.homeTeam) {
+        alert('Error: homeTeam.js did not load or window.homeTeam is undefined.');
+        return;
+      }
+      // Copy roster
+      rosterOffense = JSON.parse(JSON.stringify(window.homeTeam.rosterOffense || []));
+      rosterDefense = JSON.parse(JSON.stringify(window.homeTeam.rosterDefense || []));
+      // Copy playbooks
+      playbookData.offensive = JSON.parse(JSON.stringify(window.homeTeam.playbooks.offensive || {}));
+      playbookData.defensive = JSON.parse(JSON.stringify(window.homeTeam.playbooks.defensive || {}));
+
+      renderCover();
+      renderRoster();
+      renderOffPlayList();
+      renderDefPlayList();
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // COVER PAGE: set team name and optionally logo
+    function renderCover() {
+      const nameHeader = document.getElementById('teamNameHeader');
+      nameHeader.textContent = window.homeTeam.name + ' Playbook';
+      // If you have a team logo URL in homeTeam, you can set it:
+      // document.getElementById('teamLogo').src = window.homeTeam.logoURL;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // ROSTER PAGE
+    function renderRoster() {
+      const tbody = document.getElementById('rosterBody');
+      tbody.innerHTML = '';
+      function appendRows(rosterArray) {
+        rosterArray.forEach(p => {
+          const tr = document.createElement('tr');
+          ['id','name','position','speed','strength'].forEach(field => {
+            const td = document.createElement('td');
+            td.textContent = p[field] != null ? p[field] : '';
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+      }
+      // Offense first
+      appendRows(rosterOffense);
+      // Defense next
+      appendRows(rosterDefense);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // OFFENSE PAGE: Render Play List
+    function renderOffPlayList() {
+      const container = document.getElementById('offPlaysContainer');
+      container.innerHTML = '';
+      const plays = Object.keys(playbookData.offensive);
+      if (!plays.length) {
+        container.innerHTML = '<p style="color:#777;">No offensive plays defined.</p>';
+        return;
+      }
+      plays.forEach(playName => {
+        const row = document.createElement('div');
+        row.classList.add('play-item');
+
+        const label = document.createElement('span');
+        label.textContent = playName;
+        label.onclick = () => {
+          selectedOffPlay = playName;
+          renderOffPlayDetails();
+        };
+        row.appendChild(label);
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '×';
+        delBtn.classList.add('deleteBtn');
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (confirm(`Delete offensive play "${playName}"?`)) {
+            delete playbookData.offensive[playName];
+            if (selectedOffPlay === playName) {
+              selectedOffPlay = null;
+              renderOffPlayDetails();
+            }
+            renderOffPlayList();
+          }
+        };
+        row.appendChild(delBtn);
+
+        container.appendChild(row);
+      });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // OFFENSE PAGE: Add New Offensive Play
+    document.getElementById('newOffForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const nameInput = document.getElementById('newOffName');
+      const newName = nameInput.value.trim();
+      if (!newName) return;
+
+      if (playbookData.offensive[newName]) {
+        alert(`Offensive play "${newName}" already exists.`);
+        return;
+      }
+      // Blank formation
+      const blank = {};
+      for (let i = 1; i <= 11; i++) {
+        const id = i.toString().padStart(2, '0');
+        blank[id] = { x: 0, y: 0, h: 0, dv: 0, hb: false, ie: false };
+      }
+      playbookData.offensive[newName] = blank;
+      nameInput.value = '';
+      renderOffPlayList();
+      selectedOffPlay = newName;
+      renderOffPlayDetails();
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // OFFENSE PAGE: Import Offensive Play
+    document.getElementById('importOffBtn').addEventListener('click', () => {
+      const playName = document.getElementById('importOffName').value.trim();
+      const positionsText = document.getElementById('importOffPositions').value.trim();
+      if (!playName) {
+        alert('Please enter a name for the offensive play.');
+        return;
+      }
+      if (!positionsText) {
+        alert('Please paste the positions object for the offensive play.');
+        return;
+      }
+      if (playbookData.offensive[playName]) {
+        alert(`Offensive play "${playName}" already exists.`);
+        return;
+      }
+      let parsed;
+      try {
+        parsed = new Function(`return (${positionsText})`)();
+      } catch (err) {
+        alert('Failed to parse positions. Check syntax.\nError: ' + err.message);
+        return;
+      }
+      // Validate keys "01"-"11"
+      const keys = Object.keys(parsed).sort();
+      const expected = Array.from({ length: 11 }, (_, i) => String(i+1).padStart(2,'0'));
+      const missing = expected.filter(k => !keys.includes(k));
+      if (missing.length) {
+        alert('Missing IDs: ' + missing.join(', ') + '. Must include "01"–"11".');
+        return;
+      }
+      playbookData.offensive[playName] = parsed;
+      document.getElementById('importOffName').value = '';
+      document.getElementById('importOffPositions').value = '';
+      renderOffPlayList();
+      selectedOffPlay = playName;
+      renderOffPlayDetails();
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // OFFENSE PAGE: Render Play Details
+    function renderOffPlayDetails() {
+      const title = document.getElementById('offDetailsTitle');
+      const table = document.getElementById('offDetailsTable');
+      table.innerHTML = '';
+      if (!selectedOffPlay) {
+        title.textContent = 'Select an offensive play';
+        return;
+      }
+      title.textContent = 'Offense: ' + selectedOffPlay;
+
+      // Header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['ID','X','Y','H','DV','HB','IE'].forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Body
+      const tbody = document.createElement('tbody');
+      const formation = playbookData.offensive[selectedOffPlay];
+      for (let i = 1; i <= 11; i++) {
+        const id = i.toString().padStart(2,'0');
+        const cell = formation[id];
+        const row = document.createElement('tr');
+
+        // ID
+        const tdID = document.createElement('td');
+        tdID.textContent = id;
+        row.appendChild(tdID);
+
+        // X, Y, H, DV
+        ['x','y','h','dv'].forEach(field => {
+          const td = document.createElement('td');
+          const inp = document.createElement('input');
+          inp.type = 'number';
+          inp.step = (field==='h') ? '0.01' : '0.1';
+          inp.value = cell[field];
+          inp.addEventListener('change', () => {
+            cell[field] = Number(inp.value);
+          });
+          td.appendChild(inp);
+          row.appendChild(td);
+        });
+
+        // HB, IE
+        ['hb','ie'].forEach(flag => {
+          const td = document.createElement('td');
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.checked = cell[flag];
+          chk.addEventListener('change', () => {
+            cell[flag] = chk.checked;
+          });
+          td.appendChild(chk);
+          row.appendChild(td);
+        });
+
+        tbody.appendChild(row);
+      }
+      table.appendChild(tbody);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // OFFENSE PAGE: Export Offensive JSON
+    document.getElementById('saveOffBtn').addEventListener('click', () => {
+      const data = JSON.stringify(playbookData.offensive, null, 2);
+      console.log('── Offensive Plays JSON ──\n' + data);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'offensivePlays.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      alert('Offensive plays JSON downloaded and printed to console.');
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // DEFENSE PAGE: Render Play List
+    function renderDefPlayList() {
+      const container = document.getElementById('defPlaysContainer');
+      container.innerHTML = '';
+      const plays = Object.keys(playbookData.defensive);
+      if (!plays.length) {
+        container.innerHTML = '<p style="color:#777;">No defensive plays defined.</p>';
+        return;
+      }
+      plays.forEach(playName => {
+        const row = document.createElement('div');
+        row.classList.add('play-item');
+
+        const label = document.createElement('span');
+        label.textContent = playName;
+        label.onclick = () => {
+          selectedDefPlay = playName;
+          renderDefPlayDetails();
+        };
+        row.appendChild(label);
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '×';
+        delBtn.classList.add('deleteBtn');
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (confirm(`Delete defensive play "${playName}"?`)) {
+            delete playbookData.defensive[playName];
+            if (selectedDefPlay === playName) {
+              selectedDefPlay = null;
+              renderDefPlayDetails();
+            }
+            renderDefPlayList();
+          }
+        };
+        row.appendChild(delBtn);
+
+        container.appendChild(row);
+      });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // DEFENSE PAGE: Add New Defensive Play
+    document.getElementById('newDefForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const nameInput = document.getElementById('newDefName');
+      const newName = nameInput.value.trim();
+      if (!newName) return;
+
+      if (playbookData.defensive[newName]) {
+        alert(`Defensive play "${newName}" already exists.`);
+        return;
+      }
+      // Blank formation
+      const blank = {};
+      for (let i = 1; i <= 11; i++) {
+        const id = i.toString().padStart(2,'0');
+        blank[id] = { x: 0, y: 0, h: Math.PI, dv: 0, hb: false, ie: false };
+      }
+      playbookData.defensive[newName] = blank;
+      nameInput.value = '';
+      renderDefPlayList();
+      selectedDefPlay = newName;
+      renderDefPlayDetails();
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // DEFENSE PAGE: Import Defensive Play
+    document.getElementById('importDefBtn').addEventListener('click', () => {
+      const playName = document.getElementById('importDefName').value.trim();
+      const positionsText = document.getElementById('importDefPositions').value.trim();
+      if (!playName) {
+        alert('Please enter a name for the defensive play.');
+        return;
+      }
+      if (!positionsText) {
+        alert('Please paste the positions object for the defensive play.');
+        return;
+      }
+      if (playbookData.defensive[playName]) {
+        alert(`Defensive play "${playName}" already exists.`);
+        return;
+      }
+      let parsed;
+      try {
+        parsed = new Function(`return (${positionsText})`)();
+      } catch (err) {
+        alert('Failed to parse positions. Check syntax.\nError: ' + err.message);
+        return;
+      }
+      // Validate keys "01"-"11"
+      const keys = Object.keys(parsed).sort();
+      const expected = Array.from({ length: 11 }, (_, i) => String(i+1).padStart(2,'0'));
+      const missing = expected.filter(k => !keys.includes(k));
+      if (missing.length) {
+        alert('Missing IDs: ' + missing.join(', ') + '. Must include "01"–"11".');
+        return;
+      }
+      playbookData.defensive[playName] = parsed;
+      document.getElementById('importDefName').value = '';
+      document.getElementById('importDefPositions').value = '';
+      renderDefPlayList();
+      selectedDefPlay = playName;
+      renderDefPlayDetails();
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // DEFENSE PAGE: Render Play Details
+    function renderDefPlayDetails() {
+      const title = document.getElementById('defDetailsTitle');
+      const table = document.getElementById('defDetailsTable');
+      table.innerHTML = '';
+      if (!selectedDefPlay) {
+        title.textContent = 'Select a defensive play';
+        return;
+      }
+      title.textContent = 'Defense: ' + selectedDefPlay;
+
+      // Header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['ID','X','Y','H','DV','HB','IE'].forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Body
+      const tbody = document.createElement('tbody');
+      const formation = playbookData.defensive[selectedDefPlay];
+      for (let i = 1; i <= 11; i++) {
+        const id = i.toString().padStart(2,'0');
+        const cell = formation[id];
+        const row = document.createElement('tr');
+
+        // ID
+        const tdID = document.createElement('td');
+        tdID.textContent = id;
+        row.appendChild(tdID);
+
+        // X, Y, H, DV
+        ['x','y','h','dv'].forEach(field => {
+          const td = document.createElement('td');
+          const inp = document.createElement('input');
+          inp.type = 'number';
+          inp.step = (field==='h') ? '0.01' : '0.1';
+          inp.value = cell[field];
+          inp.addEventListener('change', () => {
+            cell[field] = Number(inp.value);
+          });
+          td.appendChild(inp);
+          row.appendChild(td);
+        });
+
+        // HB, IE
+        ['hb','ie'].forEach(flag => {
+          const td = document.createElement('td');
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.checked = cell[flag];
+          chk.addEventListener('change', () => {
+            cell[flag] = chk.checked;
+          });
+          td.appendChild(chk);
+          row.appendChild(td);
+        });
+
+        tbody.appendChild(row);
+      }
+      table.appendChild(tbody);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // DEFENSE PAGE: Export Defensive JSON
+    document.getElementById('saveDefBtn').addEventListener('click', () => {
+      const data = JSON.stringify(playbookData.defensive, null, 2);
+      console.log('── Defensive Plays JSON ──\n' + data);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'defensivePlays.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      alert('Defensive plays JSON downloaded and printed to console.');
+    });
+  </script>
+</body>
+</html>

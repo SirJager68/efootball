@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Electrik Football – Border Sparks</title>
+  <style>
+    body {
+      background: #000;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    /* Center container */
+    #sparkContainer {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Spark rectangle */
+    .spark-rect {
+      position: relative;
+      width: 400px;
+      height: 250px;
+      background: transparent;
+      border: 2px solid #00ffff;
+      box-shadow:
+        0 0 8px #00ffff,
+        inset 0 0 16px #00ffff;
+      animation: electric-flicker 0.12s infinite alternate ease-in-out;
+      overflow: hidden;
+    }
+
+    @keyframes electric-flicker {
+      0% {
+        box-shadow:
+          0 0 4px #00ffff,
+          inset 0 0 8px #00ffff;
+        border-color: #00ffff;
+      }
+      50% {
+        box-shadow:
+          0 0 20px #00ffff,
+          inset 0 0 40px #00ffff;
+        border-color: #4affff;
+      }
+      100% {
+        box-shadow:
+          0 0 8px #00ffff,
+          inset 0 0 16px #00ffff;
+        border-color: #00ffff;
+      }
+    }
+
+    /* Pixel spark style */
+    .pixel-spark {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #00ffff;
+      box-shadow: 0 0 4px #00ffff;
+      opacity: 1;
+      animation: spark-shoot 0.6s forwards ease-out;
+    }
+
+    @keyframes spark-shoot {
+      to {
+        transform: translate(var(--dx), var(--dy)) scale(0.5);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="sparkContainer">
+    <div class="spark-rect" id="sparkRect"></div>
+  </div>
+
+  <script>
+    const rect = document.getElementById('sparkRect');
+    const rectWidth  = rect.clientWidth;
+    const rectHeight = rect.clientHeight;
+
+    function randomBetween(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function spawnBorderSpark() {
+      const spark = document.createElement('div');
+      spark.classList.add('pixel-spark');
+
+      // Choose one of four edges: 0=top, 1=right, 2=bottom, 3=left
+      const edge = Math.floor(Math.random() * 4);
+      let startX, startY, dx, dy;
+
+      // Choose a random travel distance (50px to 100px)
+      const dist = randomBetween(50, 100);
+
+      switch (edge) {
+        case 0: // Top edge
+          startX = randomBetween(2, rectWidth - 2) + 'px';
+          startY = '0px';
+          dx = '0px';
+          dy = `-${dist}px`;
+          break;
+        case 1: // Right edge
+          startX = rectWidth + 'px';
+          startY = randomBetween(2, rectHeight - 2) + 'px';
+          dx = `${dist}px`;
+          dy = '0px';
+          break;
+        case 2: // Bottom edge
+          startX = randomBetween(2, rectWidth - 2) + 'px';
+          startY = rectHeight + 'px';
+          dx = '0px';
+          dy = `${dist}px`;
+          break;
+        case 3: // Left edge
+          startX = '0px';
+          startY = randomBetween(2, rectHeight - 2) + 'px';
+          dx = `-${dist}px`;
+          dy = '0px';
+          break;
+      }
+
+      // Position spark on chosen border
+      spark.style.left = startX;
+      spark.style.top  = startY;
+      spark.style.setProperty('--dx', dx);
+      spark.style.setProperty('--dy', dy);
+
+      rect.appendChild(spark);
+
+      // Remove spark after animation completes (0.6s)
+      setTimeout(() => {
+        rect.removeChild(spark);
+      }, 600);
+    }
+
+    // Spawn 2–3 border sparks every 150ms
+    setInterval(() => {
+      const count = Math.floor(randomBetween(2, 4));
+      for (let i = 0; i < count; i++) {
+        spawnBorderSpark();
+      }
+    }, 150);
+  </script>
+</body>
+</html>

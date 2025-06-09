@@ -76,6 +76,7 @@ let offensivePlaysHome = {};
 let defensivePlaysHome = {};
 let offensivePlaysAway = {};
 let defensivePlaysAway = {};
+let ps = 1; // speed listed in the playbook
 try {
     const homeTeam = require('./public/js/homeTeam.js');
     if (homeTeam && homeTeam.playbooks) {
@@ -152,7 +153,9 @@ let leftEndZone = 20; // Left end zone
 let isTouchDown = false; // Flag for touchdown detection
 let touchdownDetected = false; // Flag for touchdown detection
 let clockDuration = 90;
+let playClockDuration = 30; // 25 seconds for play clock
 let timeExpired = false; // Flag for time expired
+let ruleSet = '1';
 
 let ballx = 0;
 let bally = 0;
@@ -168,7 +171,7 @@ const initialGameState = {
     id: generateGameId(),
     clock: { s: clockDuration },
     qtr: 1,
-    playclock: 45,
+    playclock: playClockDuration,
     down: 1,
     losYardLine: 85,
     firstDownYardLine: 70,
@@ -232,8 +235,8 @@ function selectPlays(possession, offensePlay, defensePlay, offensePlayTrigger, d
             playHome = offensivePlaysHome["Kickoff Return"] || hardcodedFormation;
             playAway = defensivePlaysAway["Kickoff"] || hardcodedFormation;
         } else {
-                playHome = offensivePlaysHome[offensePlay] || game.playOffenseName;
-                playAway = defensivePlaysAway[defensePlay] || game.playDefenseName;
+            playHome = offensivePlaysHome[offensePlay] || game.playOffenseName;
+            playAway = defensivePlaysAway[defensePlay] || game.playDefenseName;
         }
         console.log(' playbook - home is on the offense');
     } else {
@@ -292,6 +295,8 @@ function randomHeadingOffset() {
 
 // ====================================== SET PLAYERS ON THE FIELD
 // ** get players setup from playbook and set them based on losYardLine
+// ** playPosH is from playbook. speed from playbook is ps.
+//
 // Initialize players
 function generatePlayers(losYardLine, playHome, playAway) {
     playHome = game.playOffense || playHome;
@@ -330,7 +335,8 @@ function generatePlayers(losYardLine, playHome, playAway) {
                 mass: parseFloat((1 + Math.random() * 0.3).toFixed(2)),
                 dialValue: parseFloat((Math.random() * 100).toFixed(2)),
                 //speed: 10 + Math.random() * 0.2,
-                speed: parseFloat(((playerData.speed * 0.1) + Math.random() * 0.2).toFixed(2)),
+                // ** player speed, from roster and set from playbook based on 0-1 scale.
+                speed: parseFloat((((playerData.speed * 0.1) + Math.random() * 0.2) * (playPosH.ps || 1)).toFixed(2)),
                 defaultSpeed: parseFloat(((playerData.speed * 0.1) + Math.random() * 0.2).toFixed(2)),
                 hb: id === '06' ? (game.possession === 'home') : (playPosH.hb || false),
                 ie: playPosH.ie || false,
@@ -478,7 +484,7 @@ wss.on('connection', (ws) => {
         players: game.players,
     };
     ws.send(JSON.stringify(state));
-    broadcastReset(game, { text: "🏈Game Initialized🏈", type: "info" });
+    broadcastReset(game, { text: "🏈Game Starting🏈", type: "info" });
     console.log('=========================================');
     console.log('Sent initial state to new client:', state);
     console.log('=========================================');
@@ -493,7 +499,7 @@ wss.on('connection', (ws) => {
             broadcastState(game);
             if (game.gameRunning) {
                 game.clockRunning = true;
-                game.playclock = 25; // Reset play clock to 25 seconds
+                game.playclock = playClockDuration; // Reset play clock to xx seconds
                 game.playClockRunning = false;
             } else {
                 game.clockRunning = false;
@@ -510,7 +516,7 @@ wss.on('connection', (ws) => {
             game.players.forEach(p => {
                 p.speed = p.defaultSpeed; // Reset speed to default
             });
-            broadcastReset(game, { text: "Play Reset", type: "info" });
+            broadcastReset(game, { text: "Play Reset - use (i) to Select Play", type: "info" });
         } else if (data.type === 'passMode') {
             game.passMode = true;
             game.playMode = 1;
@@ -524,6 +530,7 @@ wss.on('connection', (ws) => {
             game.passMode = true;
             game.playMode = 1;
             game.gameRunning = true;
+            game.clockRunning = true;
             ballx = data.ballx;
             bally = data.bally;
             balldx = data.balldx;
@@ -609,9 +616,9 @@ function tackleMade(tackledPlayerID, tacklerID, frontEdgeX) {
     if (game.playState === 'incomplete pass') {
         game.losYardLine = game.losYardLine;
         game.playState = 'normal'; // Reset play state
-        game.playClockRunning = false;
-        game.playClockRunning = true;
-        console.log('>>> Pass Incomplete tackle function');
+        game.playClockRunning = true; // run the playclock
+        game.clockRunning = false; // Stop the clock
+        console.log('>>> Pass Incomplete tackle function - tackleMade() playclock running', game.playClockRunning);
     } else {
         //if (!game.playState === 'pass incomplete') {
         const tackledPlayer = game.players.find(p => p.pid === tackledPlayerID);
@@ -708,7 +715,7 @@ setInterval(() => { // ============== gamerunning loop
 // =================================================== THE BIG CLOCK
 setInterval(() => { // ============== handling the clock
     if (game.clockRunning) {
-        broadcastClockUpdate(game);
+        //broadcastClockUpdate(game); // == shoul not be here, should be outside.
         if (game.clock.s <= 0 && !game.gameRunning) {
             game.clockRunning.s = 0;
             clockLogic();
@@ -717,6 +724,7 @@ setInterval(() => { // ============== handling the clock
     if (game.playClockRunning) {
         game.playclock = Math.max(0, game.playclock - 1 / (CLOCK_UPDATE_INTERVAL / 10));
     }
+    broadcastClockUpdate(game);
 }, CLOCK_UPDATE_INTERVAL);
 
 // =================================================== CLOCK LOGIC
@@ -727,8 +735,8 @@ function clockLogic() {
     game.clockRunning = false;
     game.playClockRunning = false;
     game.qtr = Math.min(5, game.qtr + 1); // Increment qtr, cap at 4
-    game.clock.s = clockDuration; // 10 minutes
-    game.playclock = 25;
+    game.clock.s = clockDuration; // in seconds
+    game.playclock = playClockDuration;
     if (game.qtr === 2) {
         let message = { text: `QTR 2`, type: 'info' };
         game.homeSide = game.homeSide === 0 ? Math.PI : 0; // swap heading
@@ -1067,9 +1075,9 @@ function handlePass() {
 
     // Interception logic
     const defenders = game.players.filter(p =>
-        game.ball.possession === 'home'
-            ? p.pid.includes('-h-')   // home has the ball → defenders are away
-            : p.pid.includes('-a-')   // away has the ball → defenders are home
+        game.possession === 'home'
+            ? p.pid.includes('-a-')   // home has the ball → defenders are away
+            : p.pid.includes('-h-')   // away has the ball → defenders are home
     );
     //console.log('possession:', game.possession);
     //console.log('Defenders:', defenders.map(d => d.pid));
@@ -1126,6 +1134,18 @@ function handlePass() {
                 //game.PlayState = 'complete';
                 console.log('Catch successful by:', selectedReceiver.pid);
                 broadcastBallState(game, { text: 'Catch Successful', type: 'success' });
+
+                // Let PLay Run for a moment then stop to adjust players.
+                if (ruleSet === '1') { // using set of rules 1
+                    setTimeout(() => {
+                        game.gameRunning = false;
+                        game.clockRunning = false;
+                        // Optionally set a playState for “run complete”
+                        game.playState = 'passComplete';
+                        console.log('pass caught - handlepass() now adjust players');
+                        broadcastBallState(game, { text: 'Adjust unengaged players', type: 'info' });
+                    }, 1000);
+                }
                 return;
             }
         } else {
@@ -1142,7 +1162,7 @@ function handlePass() {
         game.playMode = 0;
         game.playState = 'incomplete pass';
         message = { text: `Pass Incomplete`, type: 'info' };
-        console.log('Passing Logic complete');
+        console.log('Passing Incomplete Logic complete');
         // Assume server-side handleIncompletePass
         broadcastBallState(game, message);
         tackleMade();
@@ -1274,6 +1294,7 @@ function broadcastSelectPlay(game) {
             y: Number(p.y.toFixed(2)),
             h: Number(p.heading.toFixed(2)),
             hb: p.hb,
+            speed: p.speed,
             ie: p.ie
             //dv: Number(p.dialValue.toFixed(2))
         }))
@@ -1301,7 +1322,7 @@ function broadcastTackle(game, tackledPlayerID, tacklerID, losYardLine, firstDow
         tacklerID,
         los: (losYardLine.toFixed(2)),
         ytg: (game.yardsToGo.toFixed(2)),
-        fdl: Number(game.firstDownYardLine),
+        fdl: parseFloat(game.firstDownYardLine.toFixed(2)),
         down: down,
         possession: game.possession,
         message: message,
@@ -1322,7 +1343,8 @@ function broadcastTackle(game, tackledPlayerID, tacklerID, losYardLine, firstDow
     console.log('...broadcastTackle...');
     console.log('...playState:', game.playState);
     console.log('=========================');
-    console.log('>>', JSON.stringify(payload));
+    console.dir(payload, { depth: null, colors: true });
+    console.log('playCLockRunning:', game.playClockRunning);
     game.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(payload));
@@ -1334,8 +1356,8 @@ function broadcastTackle(game, tackledPlayerID, tacklerID, losYardLine, firstDow
 function broadcastReset(game, message, firstDownYardLine, down, yardsToGo, qtr,) {
     const payload = {
         type: 'reset',
-        los: Number(game.losYardLine),
-        fdl: Number(game.firstDownYardLine),
+        los: parseFloat(game.losYardLine.toFixed(2)),
+        fdl: parseFloat(game.firstDownYardLine.toFixed(2)),
         ytg: (game.yardsToGo.toFixed(2)),
         qtr: game.qtr,
         r: game.gameRunning,
@@ -1366,7 +1388,7 @@ function broadcastReset(game, message, firstDownYardLine, down, yardsToGo, qtr,)
     console.log('...broadcastReset...');
     console.log('...playState:', game.playState);
     console.log('=========================');
-    console.log('>>', JSON.stringify(payload));
+    console.dir(payload, { depth: null, colors: true });
     game.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(payload));
@@ -1402,32 +1424,9 @@ function broadcastClockUpdate(game) {
 function broadcastGameOver(game, message, firstDownYardLine, down, yardsToGo, qtr,) {
     const payload = {
         type: 'gameover',
-        // los: Number(game.losYardLine),
-        // fdl: Number(game.firstDownYardLine),
-        // ytg: (game.yardsToGo.toFixed(2)),
-        // qtr: game.qtr,
-        // r: game.gameRunning,
-        // m: 0,
-        // down: game.down,
-        // poss: game.possession,
         message: message,
         homeScore: game.homeScore,
         awayScore: game.awayScore,
-        // playState: game.playState,
-        // homeTD: game.homeTD,
-        // awayTD: game.awayTD,
-        // gameStart: game.gameStart,
-        // currentPlay: game.currentPlay,
-        // s: Number((game.clock.s).toFixed(2)),
-        // p: Number(game.playclock.toFixed(0)),
-        // pl: game.players.map(p => ({
-        //     pid: p.pid,
-        //     x: Number(p.x.toFixed(2)),
-        //     y: Number(p.y.toFixed(2)),
-        //     h: Number(p.heading.toFixed(2)),
-        //     hb: p.hb,
-        //     s: Number(p.speed.toFixed(2))
-        // }))
 
     };
     console.log('=========================');

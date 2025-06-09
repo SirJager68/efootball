@@ -118,8 +118,8 @@ console.log("Loading awayTeam.js...");
             "07": { x: 22.25, y: 57.85, h: 3.23, dv: 0, hb: false, ie: false },
             "08": { x: 9.24, y: -71.11, h: 3.17, dv: 0, hb: false, ie: false },
             "09": { x: 9.16, y: 75.45, h: 3.19, dv: 0, hb: false, ie: false },
-            "10": { x: 23.22, y: -29.41, h: 3.10, dv: 0, hb: false, ie: false },
-            "11": { x: 25.07, y: 7.71, h: 3.18, dv: 0, hb: false, ie: false }
+            "10": { x: 23.22, y: -29.41, h: 3.10, dv: 0, hb: false, ie: false, ps: .1 },
+            "11": { x: 25.07, y: 7.71, h: 3.18, dv: 0, hb: false, ie: false, ps: .1 }
         },
         'Kickoff': {
             '01': { x: 3, y: -30, h: 0, dv: 0, hb: false, ie: false },

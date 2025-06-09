@@ -39,17 +39,17 @@ console.log("Loading homeTeam.js...");
             "11": { x: -3.00, y: 80.01, h: -0.01, dv: 0, hb: false, ie: false }
         },
         "Red - Shotgun": {
-            "01": { x: -3, y: 0, h: 0, dv: 0, hb: false, ie: false }, // Center (C)
-            "02": { x: -3, y: -10, h: 0, dv: 0, hb: false, ie: false }, // Right Guard (RG)
-            "03": { x: -3, y: 10, h: 0, dv: 0, hb: false, ie: false }, // Left Guard (LG)
-            "04": { x: -3, y: -20, h: 0, dv: 0, hb: false, ie: false }, // Right Tackle (RT)
-            "05": { x: -3, y: 20, h: 0, dv: 0, hb: false, ie: false }, // Left Tackle (LT)
-            "06": { x: -12, y: 0, h: 0, dv: 0, hb: false, ie: true }, // Quarterback (QB)
-            "07": { x: -3, y: 30, h: 0, dv: 0, hb: false, ie: true }, // Tight End (TE)
-            "08": { x: -10, y: -9, h: 0, dv: 0, hb: false, ie: true }, // Running Back (RB)
-            "09": { x: -16, y: 10, h: 0, dv: 0, hb: false, ie: true }, // Fullback (FB)
-            "10": { x: -3, y: -80, h: 0, dv: 0, hb: false, ie: true }, // Wide Receiver 1 (WR1)
-            "11": { x: -3, y: 80, h: 0, dv: 0, hb: false, ie: true } // Wide Receiver 2 (WR2)
+            "01": { x: -3, y: 0, h: 0, dv: 0, hb: false, ie: false, ps: 1   }, // Center (C)
+            "02": { x: -3, y: -10, h: 0, dv: 0, hb: false, ie: false, ps: 1   }, // Right Guard (RG)
+            "03": { x: -3, y: 10, h: 0, dv: 0, hb: false, ie: false, ps: 1   }, // Left Guard (LG)
+            "04": { x: -3, y: -20, h: 0, dv: 0, hb: false, ie: false, ps: 1   }, // Right Tackle (RT)
+            "05": { x: -3, y: 20, h: 0, dv: 0, hb: false, ie: false, ps: 1   }, // Left Tackle (LT)
+            "06": { x: -12, y: 0, h: 0, dv: 0, hb: false, ie: true, ps: 0.1 }, // Quarterback (QB)
+            "07": { x: -3, y: 30, h: 0, dv: 0, hb: false, ie: true, ps: 1   }, // Tight End (TE)
+            "08": { x: -10, y: -9, h: 0, dv: 0, hb: false, ie: true, ps: 1   }, // Running Back (RB)
+            "09": { x: -16, y: 10, h: 0, dv: 0, hb: false, ie: true, ps: 1   }, // Fullback (FB)
+            "10": { x: -3, y: -80, h: 0, dv: 0, hb: false, ie: true, ps: 1   }, // Wide Receiver 1 (WR1)
+            "11": { x: -3, y: 80, h: 0, dv: 0, hb: false, ie: true, ps: 1   } // Wide Receiver 2 (WR2)
         },
         "Verticles": {
             "01": { x: -3.00, y: 0.00, h: -0.03, dv: 0, hb: false, ie: false },
@@ -65,17 +65,17 @@ console.log("Loading homeTeam.js...");
             "11": { x: -3.06, y: 79.05, h: -0.03, dv: 0, hb: false, ie: false }
         },
         'Kickoff Return': {
-            '01': { x: -15, y: 0, h: 0, dv: 0, hb: false, ie: false },
-            '02': { x: -15, y: -20, h: 0, dv: 0, hb: false, ie: false },
-            '03': { x: -15, y: 20, h: 0, dv: 0, hb: false, ie: false },
-            '04': { x: -15, y: -40, h: 0, dv: 0, hb: false, ie: false },
-            '05': { x: -15, y: 40, h: 0, dv: 0, hb: false, ie: false },
-            '06': { x: -70, y: 0, h: 0, dv: 0, hb: false, ie: false },
-            '07': { x: -25, y: 30, h: 0, dv: 0, hb: false, ie: false },
-            '08': { x: -25, y: 0, h: 0, dv: 0, hb: false, ie: false },
-            '09': { x: -25, y: -30, h: 0, dv: 0, hb: false, ie: false },
-            '10': { x: -30, y: -50, h: 0, dv: 0, hb: false, ie: false },
-            '11': { x: -30, y: 50, h: 0, dv: 0, hb: false, ie: false }
+            '01': { x: -15, y: 0, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '02': { x: -15, y: -20, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '03': { x: -15, y: 20, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '04': { x: -15, y: -40, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '05': { x: -15, y: 40, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '06': { x: -70, y: 0, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '07': { x: -25, y: 30, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '08': { x: -25, y: 0, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '09': { x: -25, y: -30, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '10': { x: -30, y: -50, h: 0, dv: 0, hb: false, ie: false, ps: 1  },
+            '11': { x: -30, y: 50, h: 0, dv: 0, hb: false, ie: false, ps: 1  }
         }
         // … add more offensive plays as needed …
     };
@@ -108,6 +108,19 @@ console.log("Loading homeTeam.js...");
             "10": { x: 40, y: -30, h: 0, dv: 0, hb: false }, // Strong Safety (SS)
             "11": { x: 30, y: 30, h: 0, dv: 0, hb: false } // Free Safety (FS)
         },
+        "3-3-Base": {
+            "01": { x: 3.93, y: -15.91, h: 2.90, dv: 0, hb: false, ie: false },
+            "02": { x: 3.41, y: 7.10, h: 3.15, dv: 0, hb: false, ie: false },
+            "03": { x: 4.12, y: 26.28, h: 3.20, dv: 0, hb: false, ie: false },
+            "04": { x: 14.22, y: 36.88, h: 3.30, dv: 0, hb: false, ie: false },
+            "05": { x: 13.82, y: -24.83, h: 2.83, dv: 0, hb: false, ie: false },
+            "06": { x: 13.01, y: 7.47, h: 3.06, dv: 0, hb: false, ie: false },
+            "07": { x: 22.25, y: 57.85, h: 3.23, dv: 0, hb: false, ie: false },
+            "08": { x: 9.24, y: -71.11, h: 3.17, dv: 0, hb: false, ie: false },
+            "09": { x: 9.16, y: 75.45, h: 3.19, dv: 0, hb: false, ie: false },
+            "10": { x: 23.22, y: -29.41, h: 3.10, dv: 0, hb: false, ie: false },
+            "11": { x: 25.07, y: 7.71, h: 3.18, dv: 0, hb: false, ie: false }
+        },
         'Kickoff': {
             '01': { x: 3, y: -30, h: 0, dv: 0, hb: false, ie: false },
             '02': { x: 3, y: -10, h: 0, dv: 0, hb: false, ie: false },
@@ -127,17 +140,17 @@ console.log("Loading homeTeam.js...");
     const homeTeam = {
         name: 'Washington Redskins',
         rosterOffense: [
-            { id: '01', name: 'Dak Drak', position: 'C', speed: 88, strength: 72 },
-            { id: '02', name: 'Payton Patchel', position: 'RG', speed: 89, strength: 82 },
-            { id: '03', name: 'CeeCee Deville', position: 'LG', speed: 93, strength: 78 },
-            { id: '04', name: 'Snooper Cooper', position: 'RT', speed: 90, strength: 75 },
-            { id: '05', name: 'Michael Bennet', position: 'LT', speed: 87, strength: 76 },
-            { id: '06', name: 'Joe Thiesman', position: 'QB', speed: 75, strength: 95 },
-            { id: '07', name: 'Zack Martin', position: 'TE', speed: 60, strength: 96 },
-            { id: '08', name: 'Travis Hill', position: 'RB', speed: 58, strength: 94 },
-            { id: '09', name: 'Phil Collins', position: 'FB', speed: 62, strength: 92 },
-            { id: '10', name: 'Tony Bolonge', position: 'WR1', speed: 92, strength: 80 },
-            { id: '11', name: 'Blake the Snake', position: 'WR2', speed: 83, strength: 77 }
+            { id: '01', name: 'Dak Drak', position: 'C', speed: 68, strength: 91 },
+            { id: '02', name: 'Payton Patchel', position: 'RG', speed: 69, strength: 92 },
+            { id: '03', name: 'CeeCee Deville', position: 'LG', speed: 63, strength: 93 },
+            { id: '04', name: 'Snooper Cooper', position: 'RT', speed: 70, strength: 85 },
+            { id: '05', name: 'Michael Bennet', position: 'LT', speed: 77, strength: 86 },
+            { id: '06', name: 'Joe Thiesman', position: 'QB', speed: 85, strength: 85 },
+            { id: '07', name: 'Zack Martin', position: 'TE', speed: 80, strength: 86 },
+            { id: '08', name: 'Travis Hill', position: 'RB', speed: 82, strength: 84 },
+            { id: '09', name: 'Phil Collins', position: 'FB', speed: 80, strength: 82 },
+            { id: '10', name: 'Tony Bolonge', position: 'WR1', speed: 92, strength: 75 },
+            { id: '11', name: 'Blake the Snake', position: 'WR2', speed: 93, strength: 77 }
         ],
         rosterDefense: [
             { id: '01', name: 'Bugs Bunny', position: 'LDE', speed: 95, strength: 80 },

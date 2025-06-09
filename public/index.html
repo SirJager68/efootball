@@ -1,81 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multiplayer Lobby</title>
-  <script src="/socket.io/socket.io.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Electrik Football</title>
+  <!-- Futuristic font from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
   <style>
-    body { background: #222; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 2rem; }
-    select, button { margin: 0.5rem; padding: 0.5rem; }
-    ul { list-style: none; padding: 0; }
-    li { margin: 0.5rem 0; }
+    /* Base reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000; /* deep black */
+      color: #00ffea;   /* neon cyan text */
+      font-family: 'Orbitron', sans-serif;
+      line-height: 1.4;
+    }
+
+    /* Retro grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        linear-gradient(rgba(0, 255, 234, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 234, 0.1) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: -1;
+    }
+
+    a {
+      color: #ff4af3; /* neon pink links */
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-shadow: 0 0 10px #ff4af3;
+    }
+
+    header {
+      text-align: center;
+      padding: 2rem 1rem;
+      border-bottom: 3px solid #00ffea;
+    }
+
+    header img {
+      max-width: 100%;
+      height: auto;
+      border: 4px solid #00ffea;
+      box-shadow: 0 0 20px #00ffea;
+    }
+
+    header h1 {
+      margin-top: 1rem;
+      font-size: 2.5rem;
+      text-shadow: 0 0 8px #00ffea;
+    }
+
+    nav {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+    }
+
+    nav a,
+    .play-button {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding: 0.5rem 1rem;
+      background: #00008B;
+      border: 2px solid #00ffea;
+      border-radius: 6px;
+      box-shadow: 0 0 10px #00ffea, inset 0 0 5px rgba(0, 255, 255, 0.4);
+      transition: transform 0.1s ease-in-out;
+    }
+
+    nav a:hover,
+    .play-button:hover {
+      transform: scale(1.05);
+    }
+
+    main {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    section {
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 2px solid #00ffea;
+    }
+
+    section:last-of-type {
+      border-bottom: none;
+    }
+
+    section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 6px #ff4af3;
+      color: #ff4af3;
+    }
+
+    section p {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    /* Placeholder box for typing in rules */
+    .rules-box {
+      background: #001f2f;
+      border: 2px dashed #00ffea;
+      font-family: Arial, sans-serif;
+      padding: 1rem;
+      font-size: 0.85rem;
+      min-height: 200px;
+      white-space: pre-wrap;
+      color: #00ffea;
+    }
+
+    /* About section styling */
+    .about-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .about-content p {
+      font-size: 0.9rem;
+      color: #ccfffa;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      border-top: 2px solid #00ffea;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    footer a {
+      color: #ff4af3;
+    }
   </style>
 </head>
 <body>
-  <h1>Game Lobby</h1>
-  <div>
-    <select id="teamSelect">
-      <option value="">-- Select Team --</option>
-      <option value="Eagles">Philadelphia Eagles</option>
-      <option value="Cowboys">Dallas Cowboys</option>
-      <option value="Dolphins">Miami Dolphins</option>
-      <option value="Raiders">Las Vegas Raiders</option>
-      <option value="Seahawks">Seattle Seahawks</option>
-      <option value="Chiefs">Kansas City Chiefs</option>
-      <option value="Packers">Green Bay Packers</option>
-      <option value="Patriots">New England Patriots</option>
-    </select>
-    <button id="createBtn">Create Game</button>
-  </div>
-  <h2>Available Games</h2>
-  <ul id="gamesList"></ul>
+  <!-- HEADER + BANNER -->
+  <header>
+    <!-- Banner image -->
+    <img src="/images/efootball-banner.jpg" alt="Electrik Football Banner" />
+    <h1>Electrik Football</h1>
+    <nav>
+      <a href="#how-to-play">How to Play</a>
+      <a href="#about-project">About</a>
+      <a href="game.html" class="play-button">Play Now</a>
+    </nav>
+  </header>
 
-  <script>
-    const socket = io();
-    const select = document.getElementById('teamSelect');
-    const createBtn = document.getElementById('createBtn');
-    const gamesList = document.getElementById('gamesList');
-    let myGameId = null;
+  <main>
+    <!-- HOW TO PLAY SECTION -->
+    <section id="how-to-play">
+      <h2>How to Play</h2>
+      <div class="rules-box" contenteditable="true">
+This online version is very similar to the original vibrating tabletop game, but with some modern twists.
 
-    createBtn.onclick = () => {
-      const team = select.value;
-      if (!team) return alert('Select a team.');
-      socket.emit('createGame', { team });
-    };
+        <p>
+          <strong>Setup:</strong> Each player controls a team of miniature players on a virtual field.
+          Players can select formations, plays, and control player movements using the mouse or keyboard. Once you set a play
+          you can start the game by hitting the Space Bar.
+        </p>
+          <strong>Gameplay:</strong> 
+          - ENTER THE GAME
+            - First player in is the Home team, second player is the Away team.
+            - IMPORTANT - once in DO NOT REFRESH YOUR BROWSER. (working on this...)
+          - Play will begin with kickoff (simulated now. kicking soon)
+          - Choose your play from the playbook (offense or defense).
+          - Use the directional controls to guide your players. 
+          - mouse over 
+            - highlight player and see their Card
+            - left-click to move and rotate (mouse Wheel) player
+            - press (x) plus mouse wheel to change player speed
+        - press (i) to open the playbook and select play
+        - once both players are set. press SPACE BAR to start play
+        - DURING PLAY:
+            - press (space) to stop play and adjust plays (RULES COMING)
+            - press (p) to enable Pass modern
+            - PASS modern
+              - rotate any player not engaged with another player
+              - right click on eligible receiver (highlighted players)
+              - once receiver is selected, left click over QB and pull Pass Band back to throw the ball
+              - play will immediately start Again
+              - RULE ? - stop play after catch to all players to be adjusted.
+        - TACKLE, Out of Bounds, Pass Incomplete
+            - once tackle, out of bounds or pass incomplete occurs, the play stops and players can be adjusted.
+            - press (r) to reset play and start again by selecting plays.
 
-    socket.on('gamesUpdate', games => {
-      gamesList.innerHTML = '';
-      games.forEach(g => {
-        const li = document.createElement('li');
-        li.textContent = `Game ${g.id}: ${g.homeTeam}`;
-        if (!g.awayTeam) {
-          const btn = document.createElement('button');
-          btn.textContent = 'Join';
-          btn.onclick = () => {
-            const team = select.value;
-            if (!team) return alert('Select a team.');
-            socket.emit('joinGame', { gameId: g.id, team });
-          };
-          li.appendChild(btn);
-        } else {
-          li.textContent += ` vs ${g.awayTeam}`;
-        }
-        gamesList.appendChild(li);
+        IN DEVELOPMENT:
+        -kicking and punting
+        -set game parameters (clock duration, playclock, etc.)
 
-        // if this is our game and both players joined, redirect
-        if ((g.id === myGameId || !myGameId) && g.awayTeam && (g.id === myGameId || myGameId === null)) {
-          // set and redirect
-          if (!myGameId) myGameId = g.id;
-          window.location.href = `/game.html?gameId=${g.id}`;
-        }
-      });
-    });
+        r - reset play
+        i - open playbook
+        p - enable pass mode
+        space - start play
+        x - change player speed (hold x and use mouse wheel to adjust speed)
+        z - reset zoom
+        a - center on hightlighted player
+        q - restarts game + refresh browser
+        </p>
+        <p>
+          <strong>Winning:</strong> The game ends when time runs out or a player reaches a predetermined score. 
+          The player with the most points wins!
+        </p>
 
-    socket.on('errorMsg', msg => alert(msg));
+      </div>
+    </section>
 
-    socket.on('gameCreated', ({ gameId }) => { myGameId = gameId; });
-    socket.on('gameJoined', ({ gameId }) => { myGameId = gameId; });
-  </script>
+    <!-- ABOUT THE ELECTRIK FOOTBALL PROJECT -->
+    <section id="about-project">
+      <h2>About the Electrik Football Project</h2>
+      <div class="about-content">
+        <p>
+          Electrik Football is a modern, browser-based twist on classic tabletop electric football. 
+          Inspired by the tactile thrill of guiding miniature players on a vibrating metal field, 
+          this digital adaptation brings multiplayer action, live animations, and strategic play-calling 
+          to your screen.
+        </p>
+        <p>
+          We’ve built a full 3D‐inspired yard line system, nuanced playbooks for offense and defense, 
+          and real‐time websockets to let you challenge friends from anywhere. Whether you remember the 
+          original wooden “gridiron” or you’re discovering electric football for the first time, 
+          Electrik Football offers a nostalgic yet fresh gaming experience.
+        </p>
+        <p>
+          Key features include:
+          <ul>
+            <li>Live play selection overlay—pick from shotgun, wishbone, I‐formation, and more.</li>
+            <li>Animated player movements guided by dial values and headings.</li>
+            <li>Pass and kick modes for aerial strategy and special teams.</li>
+            <li>Multigame support—host or join multiple simultaneous matches.</li>
+            <li>Retro‐styled interface with neon grids and futuristic vibes.</li>
+          </ul>
+        </p>
+        <p>
+          <strong>Developed by:</strong> The Electrik Football team.  
+          <strong>Version:</strong> 1.0 (June 2025)
+        </p>
+        <p>
+          Visit our <a href="https://github.com/yourrepo/electrik-football" target="_blank">GitHub repo</a> 
+          to contribute, report issues, or see the code in action.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    &copy; 2025 Electrik Football Project. All rights reserved. &nbsp;|&nbsp;
+    <a href="game.html">Play the Game</a> &nbsp;|&nbsp;
+    <a href="#how-to-play">How to Play</a> &nbsp;|&nbsp;
+    <a href="#about-project">About</a>
+  </footer>
 </body>
 </html>

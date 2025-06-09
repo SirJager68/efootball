@@ -113,7 +113,7 @@
         .player-card {
             position: fixed;
             bottom: 20px;
-            right: 200px;
+            right: 20px;
             /* adjust so it sits just right of your scorebug */
             width: 150px;
             height: 280px;
@@ -305,6 +305,51 @@
 
         #statusButton:hover {
             transform: scale(1.05);
+        }
+
+        /* SPARK FX */
+        .spark-rect {
+            position: absolute;
+            background: transparent;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 8px #00ffff, inset 0 0 16px #00ffff;
+            animation: electric-flicker 0.12s infinite alternate ease-in-out;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        @keyframes electric-flicker {
+            0% {
+                box-shadow: 0 0 4px #00ffff, inset 0 0 8px #00ffff;
+                border-color: #00ffff;
+            }
+
+            50% {
+                box-shadow: 0 0 20px #00ffff, inset 0 0 40px #00ffff;
+                border-color: #4affff;
+            }
+
+            100% {
+                box-shadow: 0 0 8px #00ffff, inset 0 0 16px #00ffff;
+                border-color: #00ffff;
+            }
+        }
+
+        .pixel-spark {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #00ffff;
+            box-shadow: 0 0 4px #00ffff;
+            opacity: 1;
+            animation: spark-shoot 0.6s forwards ease-out;
+        }
+
+        @keyframes spark-shoot {
+            to {
+                transform: translate(var(--dx), var(--dy)) scale(0.5);
+                opacity: 0;
+            }
         }
     </style>
 </head>

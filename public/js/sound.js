@@ -5,8 +5,9 @@
 console.log('Loading sound.js...');
 // == Preload audio files
 const tdCrowd = new Audio('audio/ef-crowdCheer1.mp3');
+tdCrowd.volume = 0.4;
 const whistle1 = new Audio('audio/ef-whistle.mp3');
-whistle1.volume = 1.0; // Set volume for whistle sound
+whistle1.volume = 0.9; // Set volume for whistle sound
 // ====================================================GAME VIBRATING
 // start vibrating when gameSwitch is ON using Tone.js Synth
 // ====================================================

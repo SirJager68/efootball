@@ -123,6 +123,7 @@ let gameState = {
     firstDownLine: null,
     gameStart: false,
     gameState: 'unknown',
+    spaceBarActive: false,
     currentPlay: null,
     homeScore: 0,
     awayScore: 0,
@@ -144,6 +145,7 @@ let ballColor = 'white';
 let isDraggingBand = false;
 let showReceivers = false;
 let showPlayerInfo = true;
+let unrotate = 0; // rotate trigger in players for speed text
 
 let gameStarted = false;
 const LOAD_TIMEOUT = 1000; // 2 seconds
@@ -472,8 +474,18 @@ ws.onmessage = (msg) => {
                 //console.log(`Received player update: ${data.pid}, x=${data.x}, y=${data.y}`);
             }
         } else if (data.type === 'selectPlay') {
-            console.log(`Received play selection: ${data.playOffense}`);
+            console.log(`complete data:`, data);
+            // ** players is handling setting up the play.
+            // ** the gamestate i need to read from playbook and set current speed.
             players = data.pl.filter(p => p && p.pid);
+            data.pl.forEach(serverP => {
+                const localP = gameState.players.find(p => p.pid === serverP.pid);
+                if (localP) {
+                    localP.speed = serverP.speed;
+                    // If you ever need to copy other fields from serverP, do so here.
+                    // e.g. localP.defaultSpeed = serverP.defaultSpeed || localP.defaultSpeed;
+                }
+            });
 
         } else if (data.type === 'clockUpdate') {
             clockSeconds = data.s !== undefined ? data.s : clockSeconds;
@@ -510,8 +522,10 @@ ws.onmessage = (msg) => {
             for (const key in updates) {
                 if (data[key] !== undefined) updates[key](data[key]);
             }
+            whistle1.play();
             gameState.playMode = data.m;
             gameState.ball.isMoving = false;
+            gameState.spaceBarActive = 'false';
             ballColor = 'white';
             scorebug.update(gameState);
             //debugScreen.update(gameState, players); // Update debug screen
@@ -564,6 +578,8 @@ ws.onmessage = (msg) => {
             gameState.possession = data.poss;
             gameState.playMode = data.m;
             gameState.ball.isMoving = false;
+            gameState.currentPlay = 'reset';
+            gameState.spaceBarActive = 'true'
             ballColor = 'white';
             selectedPlayerR = null;
             scorebug.update(gameState);
@@ -661,7 +677,7 @@ ws.send = (data) => {
 // =================================================
 document.addEventListener('keydown', (e) => {
     // == Game Switch - start and stop the game
-    if (e.code === 'Space' && gameState.playState !== 'gameover') {
+    if (e.code === 'Space' && gameState.playState !== 'gameover' && gameState.spaceBarActive === 'true') {
         e.preventDefault();
         console.log('>>>Space key pressed');
         gameState.currentPlay = 'running';
@@ -679,7 +695,7 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         showReceivers = true; //== show receivers
         console.log('gamestate:', gameState);
-        messageCanvas.addMessage(`Right Click to Select Receiver`, 'info', 'duration=1000');
+        messageCanvas.addMessage(`Adjust Players First - Right Click to Select Receiver`, 'info', 'duration=1000');
         ws.send(JSON.stringify({ type: 'passMode', gameID }));
         console.log('===Event press p - Pass mode toggled');
     } else if (e.code === 'KeyZ') {
@@ -785,50 +801,6 @@ document.addEventListener('keydown', (e) => {
         console.log('>>> Key I pressed - opening playbook overlay');
         console.log('   gameState.mySide   =', gameState.mySide);
         console.log('   gameState.possession=', gameState.possession);
-        //     // (1) Set the team name in the overlay
-        //     if (window.homeTeam && homeTeam.name) {
-        //         teamNameHeader.textContent = homeTeam.name;
-        //     } else {
-        //         teamNameHeader.textContent = "Unknown Team";
-        //     }
-
-        //     // (2) Clear any old cells and rebuild for this team’s offensive playbook
-        //     playsGrid.innerHTML = "";
-
-        //     const offensivePB = (window.homeTeam && homeTeam.playbooks && homeTeam.playbooks.offensive)
-        //         ? homeTeam.playbooks.offensive
-        //         : {};
-
-        //     Object.keys(offensivePB).forEach((playName, idx) => {
-        //         const cell = document.createElement("div");
-        //         cell.classList.add("play-cell");
-
-        //         // Choose a color class (cycle through four example colors)
-        //         const colors = ["play-red", "play-green", "play-orange", "play-blue"];
-        //         cell.classList.add(colors[idx % colors.length]);
-
-        //         cell.textContent = playName;
-        //         cell.addEventListener("click", (evt) => {
-        //             evt.stopPropagation();  // prevent overlay‐click from immediately hiding
-
-        //             console.log(`Selected play: ${playName}`);
-        //             ws.send(JSON.stringify({
-        //                 type: 'selectPlay',
-        //                 gameID: gameID,
-        //                 //team: myTeam,
-        //                 offensePlay: playName
-        //             }));
-
-        //             // Hide the overlay immediately so the user sees their choice took effect
-        //             gameOverlay.style.display = "none";
-        //         });
-
-        //         playsGrid.appendChild(cell);
-        //     });
-
-        //     // (4) Show the overlay (75% of the canvas, centered)
-        //     gameOverlay.style.display = "flex";
-        // }
 
         // (1) Show the team name at top
         if (window.homeTeam && homeTeam.name && window.awayTeam && awayTeam.name) {
@@ -985,6 +957,7 @@ canvas.addEventListener('wheel', (e) => {
         // lookup the full player object
         const fullP = getGamePlayer(hoveredPlayer.pid);
         if (!fullP) return;
+        console.log('fullP:', fullP);
 
         // tweak this factor to taste
         const wheelFactor = 0.005;
@@ -1019,6 +992,63 @@ canvas.addEventListener('wheel', (e) => {
         fieldDirty = true;
     }
     render(); // Redraw with new zoom
+});
+
+// ——————————————
+// 2) SET HOVERED PLAYER SPPED SHORTCUTS
+// ——————————————
+document.addEventListener('keydown', (e) => {
+    // Only do anything if we’re in adjustMode and hovering over a player
+    // if (!adjustMode || !hoveredPlayer) return;
+    if (!hoveredPlayer) return;
+
+    // Grab the full player object from game state
+    const fullP = getGamePlayer(hoveredPlayer.pid);
+    if (!fullP) return;
+
+    // When the user presses “1” or “2”, set that player’s speed accordingly
+    if (e.key === '1') {
+        e.preventDefault();
+        fullP.speed = 1;
+    } else if (e.key === '2') {
+        e.preventDefault();
+        fullP.speed = 2;
+    } else if (e.key === '3') {
+        e.preventDefault();
+        fullP.speed = 3;
+    } else if (e.key === '4') {
+        e.preventDefault();
+        fullP.speed = 4;
+    } else if (e.key === '5') {
+        e.preventDefault();
+        fullP.speed = 5;
+    } else if (e.key === '6') {
+        e.preventDefault();
+        fullP.speed = 6;
+    } else if (e.key === '7') {
+        e.preventDefault();
+        fullP.speed = 7; // Default speed
+    } else if (e.key === '0') {
+        e.preventDefault();
+        fullP.speed = fullP.defaultSpeed || 7; // Reset to default speed
+    } else {
+        // if any other key, do nothing here
+        return;
+    }
+
+    // Send the update to the server
+    ws.send(JSON.stringify({
+        type: 'updateSpeed',
+        gameID,
+        playerID: fullP.pid,
+        x: fullP.x,
+        y: fullP.y,
+        h: fullP.h,
+        speed: fullP.speed
+    }));
+
+    // Redraw immediately so you see the new speed‐dependent effects
+    render();
 });
 
 // =============================================Add drag panning of FIELD
@@ -1582,6 +1612,8 @@ function drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo) {
 // ===== PLAYER CARD
 const playerCard = document.getElementById('playerCard');
 function showPlayerCard(p) {
+    const pidToShow = p.pid;
+    const playerObj = players.find(pl => pl.pid === pidToShow);
     // Build inner HTML (150×250 area). You can add more fields if you want.
     playerCard.innerHTML = `
     <img src="${defaultPlayerImg.src}" alt="${p.name}" class="player-card-img" />
@@ -1635,8 +1667,26 @@ function strokeRoundedRect(ctx, x, y, width, height, radius) {
     ctx.stroke();
 }
 
+function updatePlayers() {
+    players.forEach(p => {
+        // Find the “authoritative” object in gameState.players
+        const fullP = gameState.players.find(pl => pl.pid === p.pid);
+        if (!fullP) return;
+
+        // Copy over any fields you need (speed, mass, etc.)
+        p.speed = fullP.speed;
+        p.defaultSpeed = fullP.defaultSpeed;
+        p.mass = fullP.mass;
+        // …and so on for any other stats…
+    });
+}
+
+
 function renderGame() {
     //console.log('Rendering stopped... renderStopped()');
+    if (!gameRunning) {
+        updatePlayers();
+    }
     const startTime = performance.now();
     if (fieldDirty) {
         drawField();
@@ -1675,19 +1725,50 @@ function renderGame() {
         //     yardsToPixels(0.5)
         // );
         ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
-        // if (p === hoveredPlayer) {
-        //     ctx.strokeStyle = 'yellow';
-        //     ctx.lineWidth = yardsToPixels(0.2);
-        //     ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
-        // }
         if (p === hoveredPlayer) {
-            drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo);
+            ctx.strokeStyle = 'yellow';
+            ctx.lineWidth = yardsToPixels(0.2);
+            ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
         }
+        //if (p === hoveredPlayer) {
+        //    drawPlayerHover(ctx, p, baseWidth, baseHeight, showPlayerInfo);
+        //}
         if (p.pid === selectedPlayerR) {
             ctx.strokeStyle = 'yellow';
             ctx.lineWidth = yardsToPixels(0.4);
             ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
         }
+
+        // ================= DRAW PLAYER INFO WHEN STOPPED
+        if (!gameRunning && gameState.currentPlay === 'reset') {
+            if (gameState.mySide === 'home' && p.pid.includes('-h-') ||
+                gameState.mySide === 'away' && p.pid.includes('-a-')) {
+                if (gameState.mySide === 'home' && gameState.homeTD === 20) {
+                    ctx.rotate(Math.PI); // Rotate 180° for home team players
+                    unrotate = 1;
+                }
+                if (gameState.mySide === 'away' && gameState.awayTD === 20) {
+                    ctx.rotate(Math.PI); // Rotate 180° for away team players
+                    unrotate = 1;
+                }   
+                // 3) Draw the player’s numeric speed below their base
+                const displaySpeed = (p.speed || 0).toFixed(1); // one decimal place
+                ctx.font = "12px sans-serif";
+                ctx.fillStyle = "#00ffff";    // neon-cyan
+                ctx.textAlign = "center";
+                ctx.textBaseline = "top";
+
+                const textY = yardsToPixels(baseHeight) / 2 + 2;  // 2px below bottom edge of the base
+                ctx.fillText(displaySpeed, 0, textY);
+                if (unrotate === 1) { 
+                    ctx.rotate(Math.PI); // unrotate the players
+                    unrotate = 0; // reset unrotate
+                }
+            }
+        }
+
+
+
         if (p.hb) {
             // ctx.fillStyle = ballColor;
             // ctx.beginPath();
@@ -1728,6 +1809,7 @@ function renderGame() {
             ctx.beginPath();
             ctx.arc(yardsToPixels(0), yardsToPixels(0), yardsToPixels(0.5), 0, 2 * Math.PI);
             ctx.fill();
+
             //     ctx.strokeStyle = "rgba(255, 255, 255, 0.8)"; // highlight with 50% opacity
             //     ctx.lineWidth = 3;
             //     ctx.strokeRect(-yardsToPixels(baseWidth) / 2, -yardsToPixels(baseHeight) / 2, yardsToPixels(baseWidth), yardsToPixels(baseHeight));
@@ -1747,6 +1829,8 @@ function renderGame() {
             // Only call this once, with the one hoveredPlayer
             const fullP = getGamePlayer(hoveredPlayer.pid) || hoveredPlayer;
             showPlayerCard(fullP);
+            //console.log('playerspeed', fullP.speed, 'playerMass', fullP.mass);
+            p.speed = fullP.speed || 0; // Ensure speed is defined
         } else {
             hidePlayerCard();
         }
